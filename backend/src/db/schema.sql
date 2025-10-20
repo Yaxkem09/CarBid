@@ -1,0 +1,36 @@
+CREATE TABLE IF NOT EXISTS users (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  nombre VARCHAR(100) NOT NULL,
+  apellidos VARCHAR(150) NOT NULL,
+  genero ENUM('M', 'F', 'O') NOT NULL,
+  telefono VARCHAR(20),
+  email VARCHAR(180) NOT NULL UNIQUE,
+  password_hash VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS auctions (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  seller_id INT NOT NULL,
+  title VARCHAR(160) NOT NULL,
+  brand VARCHAR(120) NOT NULL,
+  model VARCHAR(120) NOT NULL,
+  year SMALLINT NOT NULL,
+  base_price DECIMAL(12,2) NOT NULL,
+  min_increment DECIMAL(12,2) NOT NULL DEFAULT 1.00,
+  description TEXT,
+  status ENUM('draft', 'active', 'ended') NOT NULL DEFAULT 'draft',
+  ends_at DATETIME NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (seller_id) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS bids (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  auction_id INT NOT NULL,
+  user_id INT NOT NULL,
+  amount DECIMAL(12,2) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (auction_id) REFERENCES auctions(id),
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
