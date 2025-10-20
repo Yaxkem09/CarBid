@@ -146,9 +146,9 @@ router.get('/:id', auth, async (req, res) => {
   const imagesMap = await fetchImagesMap([listing.id]);
 
   const [bids] = await pool.execute(
-    `SELECT b.id, b.amount, b.created_at, b.user_id, u.nombre
+    `SELECT b.id, b.amount, b.created_at, b.bidder_id, u.nombre
        FROM bids b
-       LEFT JOIN users u ON u.id = b.user_id
+       LEFT JOIN users u ON u.id = b.bidder_id
        WHERE b.auction_id = ?
        ORDER BY b.created_at DESC`,
     [id]
@@ -158,7 +158,8 @@ router.get('/:id', auth, async (req, res) => {
     listing: mapListing(listing, imagesMap.get(listing.id)),
     bids: bids.map((bid) => ({
       id: bid.id,
-      userId: bid.user_id,
+      userId: bid.bidder_id,
+      bidderId: bid.bidder_id,
       amount: Number(bid.amount),
       bidderName: bid.nombre ?? 'Usuario',
       createdAt: bid.created_at,

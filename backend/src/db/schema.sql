@@ -28,11 +28,11 @@ CREATE TABLE IF NOT EXISTS auctions (
 CREATE TABLE IF NOT EXISTS bids (
   id INT AUTO_INCREMENT PRIMARY KEY,
   auction_id INT NOT NULL,
-  user_id INT NOT NULL,
+  bidder_id INT NOT NULL,
   amount DECIMAL(12,2) NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (auction_id) REFERENCES auctions(id),
-  FOREIGN KEY (user_id) REFERENCES users(id)
+  FOREIGN KEY (bidder_id) REFERENCES users(id)
 );
 
 -- Images per auction (used by frontend listings to render thumbnails)
