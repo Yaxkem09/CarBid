@@ -34,3 +34,12 @@ CREATE TABLE IF NOT EXISTS bids (
   FOREIGN KEY (auction_id) REFERENCES auctions(id),
   FOREIGN KEY (user_id) REFERENCES users(id)
 );
+
+-- Images per auction (used by frontend listings to render thumbnails)
+CREATE TABLE IF NOT EXISTS auction_images (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  auction_id INT NOT NULL,
+  image_path VARCHAR(255) NOT NULL,
+  uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (auction_id) REFERENCES auctions(id)
+);
