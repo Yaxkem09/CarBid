@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import { vehicleBrands, vehicleModels, vehicleYears } from '../constants/vehicleOptions';
 import './publicar-carro.css';
 
 const initialState = {
@@ -157,6 +158,24 @@ const PublicarCarro = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  const brandSelectValue = useMemo(
+    () => (vehicleBrands.includes(formData.brand) ? formData.brand : ''),
+    [formData.brand],
+  );
+
+  const modelSelectValue = useMemo(
+    () => (vehicleModels.includes(formData.model) ? formData.model : ''),
+    [formData.model],
+  );
+
+  const yearSelectValue = useMemo(() => {
+    if (!formData.year) {
+      return '';
+    }
+    const stringYear = String(formData.year);
+    return vehicleYears.some((yearOption) => String(yearOption) === stringYear) ? stringYear : '';
+  }, [formData.year]);
+
   const handleChange = (event) => {
     const { name, value } = event.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -212,7 +231,7 @@ const PublicarCarro = () => {
 
         <div className="publish-car__layout">
           <form className="publish-car__form-card" onSubmit={handleSubmit}>
-            <section className="publish-car__section">
+            <section className="publish-car__section publish-car__section--vehicle">
               <h2 className="publish-car__section-title">Datos del vehiculo</h2>
               <Field label="Titulo de la subasta" hint="Visible para los compradores en la lista de subastas.">
                 <input
@@ -226,26 +245,65 @@ const PublicarCarro = () => {
               </Field>
               <div className="publish-car__grid publish-car__grid--three">
                 <Field label="Marca">
+                  <select
+                    name="brand"
+                    value={brandSelectValue}
+                    onChange={handleChange}
+                    className="publish-car__select"
+                  >
+                    <option value="">Selecciona una marca</option>
+                    {vehicleBrands.map((brand) => (
+                      <option key={brand} value={brand}>
+                        {brand}
+                      </option>
+                    ))}
+                  </select>
                   <input
                     type="text"
                     name="brand"
                     value={formData.brand}
                     onChange={handleChange}
-                    placeholder="Ej. Toyota"
-                    className="publish-car__input"
+                    placeholder="O escribe una marca personalizada"
+                    className="publish-car__input publish-car__input--secondary"
                   />
                 </Field>
                 <Field label="Modelo">
+                  <select
+                    name="model"
+                    value={modelSelectValue}
+                    onChange={handleChange}
+                    className="publish-car__select"
+                  >
+                    <option value="">Selecciona un modelo</option>
+                    {vehicleModels.map((modelName) => (
+                      <option key={modelName} value={modelName}>
+                        {modelName}
+                      </option>
+                    ))}
+                  </select>
                   <input
                     type="text"
                     name="model"
                     value={formData.model}
                     onChange={handleChange}
-                    placeholder="Ej. Corolla"
-                    className="publish-car__input"
+                    placeholder="O escribe un modelo personalizado"
+                    className="publish-car__input publish-car__input--secondary"
                   />
                 </Field>
                 <Field label="Ano">
+                  <select
+                    name="year"
+                    value={yearSelectValue}
+                    onChange={handleChange}
+                    className="publish-car__select"
+                  >
+                    <option value="">Selecciona un ano</option>
+                    {vehicleYears.map((yearOption) => (
+                      <option key={yearOption} value={String(yearOption)}>
+                        {yearOption}
+                      </option>
+                    ))}
+                  </select>
                   <input
                     type="number"
                     name="year"
@@ -253,14 +311,14 @@ const PublicarCarro = () => {
                     max={new Date().getFullYear() + 1}
                     value={formData.year}
                     onChange={handleChange}
-                    placeholder="Ej. 2022"
-                    className="publish-car__input"
+                    placeholder="O escribe manualmente"
+                    className="publish-car__input publish-car__input--secondary"
                   />
                 </Field>
               </div>
             </section>
 
-            <section className="publish-car__section">
+            <section className="publish-car__section publish-car__section--auction">
               <h2 className="publish-car__section-title">Parametros de subasta</h2>
               <div className="publish-car__grid publish-car__grid--three">
                 <Field label="Precio base (Q)">
