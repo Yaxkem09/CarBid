@@ -337,21 +337,34 @@ const PublicarCarro = () => {
       return;
     }
 
-    const payload = {
-      title: formData.title.trim(),
-      brand: formData.brand.trim(),
-      model: formData.model.trim(),
-      year: Number(formData.year),
-      basePrice: Number(formData.basePrice),
-      minIncrement: Number(formData.minIncrement),
-      description: formData.description.trim(),
-      endsAt: formData.endsAt,
-    };
+    const sanitizedTitle = formData.title.trim();
+    const sanitizedBrand = formData.brand.trim();
+    const sanitizedModel = formData.model.trim();
+    const sanitizedDescription = formData.description.trim();
+    const sanitizedEndsAt = formData.endsAt;
+    const sanitizedYear = Number(formData.year);
+    const sanitizedBasePrice = Number(formData.basePrice);
+    const sanitizedMinIncrement = Number(formData.minIncrement);
+
+    const formPayload = new FormData();
+    formPayload.append('title', sanitizedTitle);
+    formPayload.append('brand', sanitizedBrand);
+    formPayload.append('model', sanitizedModel);
+    formPayload.append('year', String(sanitizedYear));
+    formPayload.append('basePrice', String(sanitizedBasePrice));
+    formPayload.append('minIncrement', String(sanitizedMinIncrement));
+    formPayload.append('description', sanitizedDescription);
+    formPayload.append('endsAt', sanitizedEndsAt);
+    photos.forEach((photo) => {
+      if (photo?.file) {
+        formPayload.append('images', photo.file);
+      }
+    });
 
     try {
       setLoading(true);
       setError('');
-      const response = await api.post('/listings', payload);
+      const response = await api.post('/listings', formPayload);
       setFormData(initialState);
       updatePhotos([]);
       setPhotoError('');

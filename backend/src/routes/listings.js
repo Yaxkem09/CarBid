@@ -1,8 +1,100 @@
 import { Router } from 'express';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
 import { pool } from '../db/pool.js';
 import { auth } from '../middleware/auth.js';
 
 const router = Router();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const uploadsDir = path.join(__dirname, '..', '..', 'uploads');
+
+fs.mkdirSync(uploadsDir, { recursive: true });
+
+const MAX_IMAGE_COUNT = 4;
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5 MB
+const allowedMimeTypes = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+  'image/jpg',
+]);
+
+const storage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, uploadsDir),
+  filename: (_req, file, cb) => {
+    const ext = (path.extname(file.originalname) || '.jpg').toLowerCase();
+    const baseName = path
+      .basename(file.originalname, path.extname(file.originalname))
+      .toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9-_]/g, '')
+      .slice(0, 40) || 'imagen';
+
+    cb(null, `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${baseName}${ext}`);
+  },
+});
+
+const upload = multer({
+  storage,
+  limits: {
+    fileSize: MAX_IMAGE_SIZE,
+    files: MAX_IMAGE_COUNT,
+  },
+  fileFilter: (_req, file, cb) => {
+    if (allowedMimeTypes.has(file.mimetype)) {
+      cb(null, true);
+    } else {
+      const error = new Error('INVALID_IMAGE_TYPE');
+      error.code = 'INVALID_IMAGE_TYPE';
+      cb(error);
+    }
+  },
+});
+
+const handleImageUpload = (req, res, next) => {
+  upload.array('images', MAX_IMAGE_COUNT)(req, res, (err) => {
+    if (!err) {
+      next();
+      return;
+    }
+
+    if (err.code === 'INVALID_IMAGE_TYPE') {
+      return res.status(400).json({ message: 'Solo se permiten archivos de imagen (JPG, PNG, WEBP, GIF).' });
+    }
+
+    if (err instanceof multer.MulterError) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ message: 'Cada imagen debe pesar menos de 5MB.' });
+      }
+      if (err.code === 'LIMIT_FILE_COUNT') {
+        return res.status(400).json({ message: `Solo se permiten ${MAX_IMAGE_COUNT} imagenes por publicacion.` });
+      }
+      return res.status(400).json({ message: 'No se pudieron procesar las imagenes adjuntas.' });
+    }
+
+    console.error('Error subiendo imagenes:', err);
+    return res.status(500).json({ message: 'Error interno al subir las imagenes.' });
+  });
+};
+
+function cleanupFiles(files) {
+  if (!Array.isArray(files) || !files.length) {
+    return;
+  }
+
+  files.forEach((file) => {
+    try {
+      fs.unlinkSync(file.path);
+    } catch (error) {
+      console.warn('No se pudo eliminar archivo temporal:', error.message);
+    }
+  });
+}
 
 function mapListing(row, images = []) {
   const normalizedImages = Array.isArray(images) ? images : [];
@@ -167,53 +259,107 @@ router.get('/:id', auth, async (req, res) => {
   });
 });
 
-router.post('/', auth, async (req, res) => {
-  const { title, brand, model, year, basePrice, minIncrement, description, endsAt } = req.body ?? {};
+router.post('/', auth, handleImageUpload, async (req, res) => {
+  const body = req.body ?? {};
+  const uploadedFiles = Array.isArray(req.files) ? req.files : [];
 
-  if (!title || !brand || !model || !year || !basePrice || !minIncrement || !endsAt) {
-    return res.status(400).json({ message: 'Campos obligatorios: título, marca, modelo, año, precio base, incremento mínimo y fecha de cierre.' });
+  const readField = (field) => {
+    const value = body[field];
+    const selected = Array.isArray(value) ? value[0] : value;
+    if (typeof selected === 'string') {
+      return selected.trim();
+    }
+    if (selected === undefined || selected === null) {
+      return '';
+    }
+    return String(selected).trim();
+  };
+
+  const rejectWithCleanup = (status, message) => {
+    cleanupFiles(uploadedFiles);
+    return res.status(status).json({ message });
+  };
+
+  const title = readField('title');
+  const brand = readField('brand');
+  const model = readField('model');
+  const yearValue = readField('year');
+  const basePriceValue = readField('basePrice');
+  const minIncrementValue = readField('minIncrement');
+  const description = readField('description');
+  const endsAtValue = readField('endsAt');
+
+  if (!title || !brand || !model || !yearValue || !basePriceValue || !minIncrementValue || !endsAtValue) {
+    return rejectWithCleanup(400, 'Campos obligatorios: titulo, marca, modelo, ano, precio base, incremento minimo y fecha de cierre.');
   }
 
-  const closingDate = new Date(endsAt);
-  if (Number.isNaN(closingDate.getTime()) || closingDate <= new Date()) {
-    return res.status(400).json({ message: 'La fecha de cierre debe ser posterior al momento actual.' });
-  }
+  const numericYear = Number(yearValue);
+  const numericBasePrice = Number(basePriceValue);
+  const numericMinIncrement = Number(minIncrementValue);
+  const currentYearLimit = new Date().getFullYear() + 1;
 
-  const numericBasePrice = Number(basePrice);
-  const numericMinIncrement = Number(minIncrement);
-  const numericYear = Number(year);
-
-  if (!Number.isFinite(numericYear) || numericYear < 1900) {
-    return res.status(400).json({ message: 'El año del vehículo no es válido.' });
+  if (!Number.isInteger(numericYear) || numericYear < 1900 || numericYear > currentYearLimit) {
+    return rejectWithCleanup(400, `El ano debe estar entre 1900 y ${currentYearLimit}.`);
   }
 
   if (!Number.isFinite(numericBasePrice) || numericBasePrice <= 0) {
-    return res.status(400).json({ message: 'El precio base debe ser un número mayor que 0.' });
+    return rejectWithCleanup(400, 'El precio base debe ser un numero mayor que 0.');
   }
 
   if (!Number.isFinite(numericMinIncrement) || numericMinIncrement <= 0) {
-    return res.status(400).json({ message: 'El incremento mínimo debe ser un número mayor que 0.' });
+    return rejectWithCleanup(400, 'El incremento minimo debe ser un numero mayor que 0.');
   }
 
-  const sql = `
-    INSERT INTO auctions (seller_id, title, brand, model, year, base_price, min_increment, description, status, ends_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)
-  `;
+  const closingDate = new Date(endsAtValue);
+  if (Number.isNaN(closingDate.getTime()) || closingDate <= new Date()) {
+    return rejectWithCleanup(400, 'La fecha de cierre debe ser posterior al momento actual.');
+  }
 
-  const params = [
-    req.user.id,
-    title,
-    brand,
-    model,
-    numericYear,
-    numericBasePrice,
-    numericMinIncrement,
-    description ?? '',
-    formatDate(closingDate),
-  ];
+  const relativeImagePaths = uploadedFiles.map((file) => `uploads/${file.filename}`);
 
-  const [result] = await pool.execute(sql, params);
-  res.status(201).json({ id: result.insertId });
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    const sql = `
+      INSERT INTO auctions (seller_id, title, brand, model, year, base_price, min_increment, description, status, ends_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)
+    `;
+
+    const params = [
+      req.user.id,
+      title,
+      brand,
+      model,
+      numericYear,
+      numericBasePrice,
+      numericMinIncrement,
+      description || '',
+      formatDate(closingDate),
+    ];
+
+    const [result] = await connection.execute(sql, params);
+    const listingId = result.insertId;
+
+    if (relativeImagePaths.length) {
+      const placeholders = relativeImagePaths.map(() => '(?, ?)').join(', ');
+      const imageParams = relativeImagePaths.flatMap((pathValue) => [listingId, pathValue]);
+      await connection.execute(
+        `INSERT INTO auction_images (auction_id, image_path) VALUES ${placeholders}`,
+        imageParams,
+      );
+    }
+
+    await connection.commit();
+    return res.status(201).json({ id: listingId, images: relativeImagePaths });
+  } catch (error) {
+    await connection.rollback();
+    cleanupFiles(uploadedFiles);
+    console.error('Error creando subasta:', error);
+    return res.status(500).json({ message: 'No se pudo publicar el vehiculo.' });
+  } finally {
+    connection.release();
+  }
 });
 
 router.post('/:id/bids', auth, async (req, res) => {
