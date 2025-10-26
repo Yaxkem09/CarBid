@@ -19,7 +19,16 @@ const formatDateTime = (value) => {
   if (Number.isNaN(date.getTime())) {
     return '-';
   }
-  return date.toLocaleString();
+  return date.toLocaleString('es-ES', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  });
 };
 
 const formatRemainingTime = (milliseconds) => {
@@ -30,7 +39,7 @@ const formatRemainingTime = (milliseconds) => {
   const seconds = totalSeconds % 60;
 
   if (days > 0) {
-    return `${days}d ${hours}h ${minutes}m`;
+    return `${days}d ${hours}h ${minutes}m ${seconds}s`;
   }
 
   const pad = (value) => value.toString().padStart(2, '0');
@@ -43,7 +52,7 @@ const DetalleSubasta = () => {
   const [bids, setBids] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [bidAmount, setBidAmount] = useState('');
+  const [extraAmount, setExtraAmount] = useState('');
   const [bidError, setBidError] = useState('');
   const [bidLoading, setBidLoading] = useState(false);
   const [timeLeft, setTimeLeft] = useState('');
@@ -151,20 +160,42 @@ const DetalleSubasta = () => {
     setActiveImageIndex(0);
   }, [listing?.id]);
 
+  useEffect(() => {
+    if (listing) {
+      const defaultIncrement = Math.max(listing.minIncrement ?? 1, 1);
+      setExtraAmount(String(defaultIncrement));
+    }
+  }, [listing]);
+
   const handleBidSubmit = async (event) => {
     event.preventDefault();
     setBidError('');
 
-    const amount = Number(bidAmount);
-    if (!Number.isFinite(amount) || amount <= 0) {
-      setBidError('Ingresa una cantidad valida.');
+    const effectiveMinIncrement = Math.max(listing?.minIncrement ?? 1, 1);
+    const numericExtra = Number(extraAmount);
+    if (!Number.isFinite(numericExtra) || numericExtra <= 0) {
+      setBidError('Ingresa un incremento valido.');
+      return;
+    }
+
+    if (numericExtra < effectiveMinIncrement) {
+      setBidError(`El incremento debe ser al menos ${formatCurrency(effectiveMinIncrement)}.`);
+      return;
+    }
+
+    const highestBidAmount = listing?.highestBid ?? null;
+    const baseAmount = highestBidAmount ?? listing.basePrice;
+    const amount = baseAmount + numericExtra;
+    const minNextBid = Math.max(baseAmount, listing.basePrice);
+    if (amount <= minNextBid) {
+      setBidError('El total debe superar la oferta actual.');
       return;
     }
 
     try {
       setBidLoading(true);
       await api.post(`/listings/${id}/bids`, { amount });
-      setBidAmount('');
+      setExtraAmount(String(Math.max(listing.minIncrement ?? 1, 1)));
       await loadDetails({ silent: true });
     } catch (err) {
       setBidError(err.response?.data?.message || 'No se pudo registrar la oferta');
@@ -192,6 +223,13 @@ const DetalleSubasta = () => {
   const highestBidAmount = listing?.highestBid ?? null;
   const baseAmount = highestBidAmount ?? listing.basePrice;
   const minNextBid = Math.max(baseAmount, listing.basePrice);
+  const effectiveMinIncrement = Math.max(listing.minIncrement ?? 1, 1);
+  const incrementOptions = [1, 2, 3].map((multiplier) => ({
+    multiplier,
+    value: effectiveMinIncrement * multiplier,
+  }));
+  const numericExtraAmount = Number(extraAmount) || 0;
+  const totalOffer = baseAmount + numericExtraAmount;
   const sortedBids = [...bids].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
   );
@@ -253,6 +291,14 @@ const DetalleSubasta = () => {
           )}
         </div>
 
+        <p className="detalle-subasta__description">{listing.description}</p>
+        <p className="detalle-subasta__closing">
+          Cierra el: <strong>{formatDateTime(listing.endsAt)}</strong>
+        </p>
+      </section>
+
+      <section className="detalle-subasta__bids">
+        <h2>Realizar oferta</h2>
         <div className="detalle-subasta__stats">
           <p>
             <span className="detalle-subasta__stats-label">Precio base:</span>{' '}
@@ -264,37 +310,41 @@ const DetalleSubasta = () => {
               {highestBidAmount ? formatCurrency(highestBidAmount) : 'Sin ofertas'}
             </strong>
           </p>
-          {listing.minIncrement && (
-            <p>
-              <span className="detalle-subasta__stats-label">Incremento minimo:</span>{' '}
-              <strong>{formatCurrency(listing.minIncrement)}</strong>
-            </p>
-          )}
           <p>
-            <span className="detalle-subasta__stats-label">Cierra el:</span>{' '}
-            <strong>{formatDateTime(listing.endsAt)}</strong>
+            <span className="detalle-subasta__stats-label">Incremento minimo:</span>{' '}
+            <strong>{formatCurrency(effectiveMinIncrement)}</strong>
           </p>
         </div>
-
-        <p className="detalle-subasta__description">{listing.description}</p>
-      </section>
-
-      <section className="detalle-subasta__bids">
-        <h2>Realizar oferta</h2>
         <form onSubmit={handleBidSubmit} className="detalle-subasta__form">
           <label htmlFor="bidAmount">
-            Tu oferta (debe superar {formatCurrency(minNextBid)})
+            Tu incremento (se suma a {formatCurrency(baseAmount)})
           </label>
           <input
             id="bidAmount"
             type="number"
-            min={minNextBid}
-            step={listing.minIncrement ?? 1}
-            value={bidAmount}
-            onChange={(event) => setBidAmount(event.target.value)}
+            min={effectiveMinIncrement}
+            step="0.01"
+            value={extraAmount}
+            onChange={(event) => setExtraAmount(event.target.value)}
             required
             disabled={!isLive}
           />
+          <div className="detalle-subasta__quick-buttons">
+            {incrementOptions.map(({ multiplier, value }) => (
+              <button
+                key={multiplier}
+                type="button"
+                onClick={() => setExtraAmount(String(value))}
+                disabled={!isLive}
+              >
+                +{multiplier}x ({formatCurrency(value)})
+              </button>
+            ))}
+          </div>
+          <div className="detalle-subasta__total">
+            <span>Total oferta:</span>
+            <strong>{formatCurrency(totalOffer)}</strong>
+          </div>
           <button type="submit" disabled={bidLoading || !isLive}>
             {bidLoading ? 'Enviando...' : 'Enviar oferta'}
           </button>

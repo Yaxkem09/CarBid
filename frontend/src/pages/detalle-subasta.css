@@ -133,6 +133,7 @@
 .detalle-subasta__stats {
   display: grid;
   gap: 6px;
+  margin-bottom: 8px;
 }
 
 .detalle-subasta__stats-label {
@@ -146,6 +147,12 @@
 
 .detalle-subasta__description {
   line-height: 1.6;
+}
+
+.detalle-subasta__closing {
+  margin-top: auto;
+  font-size: 0.95rem;
+  color: #1e293b;
 }
 
 .detalle-subasta__form {
@@ -174,6 +181,43 @@
 .detalle-subasta__form button:disabled {
   background: #86efac;
   cursor: not-allowed;
+}
+
+.detalle-subasta__quick-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.detalle-subasta__quick-buttons button {
+  background: #e0f2fe;
+  color: #0369a1;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.detalle-subasta__quick-buttons button:hover:not(:disabled) {
+  background: #bae6fd;
+}
+
+.detalle-subasta__quick-buttons button:disabled {
+  background: #e2e8f0;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.detalle-subasta__total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f1f5f9;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-weight: 600;
 }
 
 .detalle-subasta__error {
