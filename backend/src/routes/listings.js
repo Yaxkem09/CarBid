@@ -401,7 +401,7 @@ router.post('/:id/bids', auth, async (req, res) => {
   }
 
   await pool.execute(
-    'INSERT INTO bids (auction_id, user_id, amount) VALUES (?, ?, ?)',
+    'INSERT INTO bids (auction_id, bidder_id, amount) VALUES (?, ?, ?)',
     [id, req.user.id, amount]
   );
 

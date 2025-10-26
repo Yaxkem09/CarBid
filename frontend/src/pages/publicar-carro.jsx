@@ -124,7 +124,7 @@ function PreviewCard({ data, photos = [] }) {
         <p className="publish-car__preview-subheading">
           {brand || 'Marca'}{' '}
           {model || 'Modelo'}{' '}
-          {year ? ` - ${year}` : '- Anio'}
+          {year ? ` - ${year}` : '- Año'}
         </p>
         <p className="publish-car__preview-meta">Precio base: <strong>{price}</strong></p>
         <p className="publish-car__preview-meta">Incremento minimo: <strong>{increment}</strong></p>
@@ -152,7 +152,7 @@ const getValidationError = (data) => {
   const yearNumber = Number(year);
   const currentYearLimit = new Date().getFullYear() + 1;
   if (!Number.isInteger(yearNumber) || yearNumber < 1900 || yearNumber > currentYearLimit) {
-    return `El ano debe estar entre 1900 y ${currentYearLimit}.`;
+    return `El año debe estar entre 1900 y ${currentYearLimit}.`;
   }
   const basePriceNumber = Number(basePrice);
   if (!Number.isFinite(basePriceNumber) || basePriceNumber <= 0) {
@@ -450,14 +450,14 @@ const PublicarCarro = () => {
                     className="publish-car__input publish-car__input--secondary"
                   />
                 </Field>
-                <Field label="Ano">
+                <Field label="Año">
                   <select
                     name="year"
                     value={yearSelectValue}
                     onChange={handleChange}
                     className="publish-car__select"
                   >
-                    <option value="">Selecciona un ano</option>
+                    <option value="">Selecciona un año</option>
                     {vehicleYears.map((yearOption) => (
                       <option key={yearOption} value={String(yearOption)}>
                         {yearOption}
