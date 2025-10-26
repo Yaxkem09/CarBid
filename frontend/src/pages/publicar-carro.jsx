@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { vehicleBrands, vehicleModels, vehicleYears } from '../constants/vehicleOptions';
@@ -14,6 +14,8 @@ const initialState = {
   description: '',
   endsAt: '',
 };
+
+const MAX_PHOTOS = 4;
 
 const currencyFormatter = new Intl.NumberFormat('es-GT', {
   style: 'currency',
@@ -61,14 +63,31 @@ function Field({ label, children, hint }) {
   );
 }
 
-function PhotoGrid({ images = [] }) {
+function PhotoGrid({ images = [], onRemove }) {
   return (
     <div className="publish-car__photo-grid">
       {[0, 1, 2, 3].map((index) => {
         const image = images[index];
+        const isFilled = Boolean(image);
+        const slotProps =
+          isFilled && typeof onRemove === 'function'
+            ? {
+                role: 'button',
+                tabIndex: 0,
+                onClick: () => onRemove(index),
+                onKeyDown: (event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    onRemove(index);
+                  }
+                },
+                title: 'Haz clic o presiona Enter para eliminar esta foto',
+              }
+            : {};
+
         return (
-          <div key={index} className="publish-car__photo-slot">
-            {image ? (
+          <div key={index} className="publish-car__photo-slot" {...slotProps}>
+            {isFilled ? (
               <img src={image} alt={`foto-${index}`} />
             ) : (
               <span>+ Foto {index + 1}</span>
@@ -80,18 +99,23 @@ function PhotoGrid({ images = [] }) {
   );
 }
 
-function PreviewCard({ data }) {
+function PreviewCard({ data, photos = [] }) {
   const { title, brand, model, year, basePrice, minIncrement, endsAt, description } = data;
 
   const price = formatCurrency(basePrice) || 'Q0.00';
   const increment = formatCurrency(minIncrement) || 'Q0.00';
   const endsAtText = formatDateTime(endsAt) || 'dd/mm/aa hh:mm';
+  const coverPhoto = photos[0] ?? null;
 
   return (
     <aside className="publish-car__preview-card">
       <h3 className="publish-car__preview-title">Vista previa</h3>
       <div className="publish-car__preview-media">
-        <span>Fotos del vehiculo</span>
+        {coverPhoto ? (
+          <img src={coverPhoto} alt="Vista previa del vehiculo" />
+        ) : (
+          <span>Fotos del vehiculo</span>
+        )}
       </div>
       <div className="publish-car__preview-body">
         <p className="publish-car__preview-heading">
@@ -100,7 +124,7 @@ function PreviewCard({ data }) {
         <p className="publish-car__preview-subheading">
           {brand || 'Marca'}{' '}
           {model || 'Modelo'}{' '}
-          {year ? `• ${year}` : '• Ano'}
+          {year ? ` - ${year}` : '- Anio'}
         </p>
         <p className="publish-car__preview-meta">Precio base: <strong>{price}</strong></p>
         <p className="publish-car__preview-meta">Incremento minimo: <strong>{increment}</strong></p>
@@ -154,7 +178,11 @@ const getValidationError = (data) => {
 
 const PublicarCarro = () => {
   const [formData, setFormData] = useState(initialState);
+  const [photos, setPhotos] = useState([]);
+  const photosRef = useRef([]);
+  const fileInputRef = useRef(null);
   const [error, setError] = useState('');
+  const [photoError, setPhotoError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -176,6 +204,116 @@ const PublicarCarro = () => {
     return vehicleYears.some((yearOption) => String(yearOption) === stringYear) ? stringYear : '';
   }, [formData.year]);
 
+  const updatePhotos = (updater) => {
+    setPhotos((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      const nextIds = new Set(next.map((photo) => photo.id));
+
+      prev.forEach((photo) => {
+        if (!nextIds.has(photo.id)) {
+          URL.revokeObjectURL(photo.preview);
+        }
+      });
+
+      photosRef.current = next;
+      return next;
+    });
+  };
+
+  useEffect(
+    () => () => {
+      photosRef.current.forEach((photo) => URL.revokeObjectURL(photo.preview));
+    },
+    [],
+  );
+
+  const ingestFiles = (files) => {
+    if (!files?.length) {
+      return false;
+    }
+
+    const accepted = [];
+    Array.from(files).forEach((file) => {
+      if (!file.type.startsWith('image/')) {
+        return;
+      }
+
+      const id = `${file.name}-${file.lastModified}-${file.size}-${Math.random().toString(36).slice(2)}`;
+      const preview = URL.createObjectURL(file);
+      accepted.push({ id, file, preview });
+    });
+
+    if (!accepted.length) {
+      return false;
+    }
+
+    let added = false;
+    updatePhotos((prev) => {
+      const availableSlots = Math.max(0, MAX_PHOTOS - prev.length);
+      if (!availableSlots) {
+        return prev;
+      }
+      const next = [...prev, ...accepted.slice(0, availableSlots)];
+      added = next.length > prev.length;
+      return next;
+    });
+    return added;
+  };
+
+  const handlePhotoInputChange = (event) => {
+    const { files } = event.target;
+    const success = ingestFiles(files);
+    if (!success) {
+      const message =
+        photosRef.current.length >= MAX_PHOTOS
+          ? `Limite de ${MAX_PHOTOS} fotos alcanzado.`
+          : 'Selecciona archivos de imagen validos (JPG, PNG, WebP...).';
+      setPhotoError(message);
+    } else {
+      setPhotoError('');
+    }
+    event.target.value = '';
+  };
+
+  const handlePhotoDrop = (event) => {
+    event.preventDefault();
+    const success = ingestFiles(event.dataTransfer?.files);
+    if (!success) {
+      const message =
+        photosRef.current.length >= MAX_PHOTOS
+          ? `Limite de ${MAX_PHOTOS} fotos alcanzado.`
+          : 'Selecciona archivos de imagen validos (JPG, PNG, WebP...).';
+      setPhotoError(message);
+    } else {
+      setPhotoError('');
+    }
+  };
+
+  const handlePhotoDragOver = (event) => {
+    event.preventDefault();
+  };
+
+  const handlePhotoRemove = (index) => {
+    updatePhotos((prev) => {
+      if (!prev[index]) {
+        return prev;
+      }
+      return prev.filter((_, idx) => idx !== index);
+    });
+    setPhotoError('');
+  };
+
+  const handleUploadAreaClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleUploadAreaKeyDown = (event) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      fileInputRef.current?.click();
+    }
+  };
+
   const handleChange = (event) => {
     const { name, value } = event.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -185,6 +323,8 @@ const PublicarCarro = () => {
   };
 
   const handleCancel = () => {
+    updatePhotos([]);
+    setPhotoError('');
     navigate(-1);
   };
 
@@ -213,7 +353,14 @@ const PublicarCarro = () => {
       setError('');
       const response = await api.post('/listings', payload);
       setFormData(initialState);
-      navigate(`/detalle-subasta/${response.data.id}`);
+      updatePhotos([]);
+      setPhotoError('');
+      const listingId = response.data?.id;
+      if (listingId) {
+        navigate(`/detalle-subasta/${listingId}`);
+      } else {
+        navigate('/inicio');
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'No se pudo publicar el vehiculo.');
     } finally {
@@ -359,13 +506,37 @@ const PublicarCarro = () => {
 
             <section className="publish-car__section">
               <h2 className="publish-car__section-title">Fotos del vehiculo</h2>
-              <Field label="Galeria" hint="Recomendado: 4 a 8 imagenes horizontales (1200x900px).">
-                <div className="publish-car__upload">
-                  Arrastra y suelta o <span>explora archivos</span>
+              <Field label="Galeria" hint="Recomendado: hasta 4 imagenes horizontales (1200x900px).">
+                <div
+                  className="publish-car__upload"
+                  role="button"
+                  tabIndex={0}
+                  onClick={handleUploadAreaClick}
+                  onKeyDown={handleUploadAreaKeyDown}
+                  onDrop={handlePhotoDrop}
+                  onDragOver={handlePhotoDragOver}
+                  aria-label="Subir fotos del vehiculo"
+                >
+                  {photos.length >= MAX_PHOTOS ? (
+                    <>Limite de {MAX_PHOTOS} fotos alcanzado. Haz clic en una foto para eliminarla.</>
+                  ) : (
+                    <>
+                      Arrastra y suelta o <span>explora archivos</span>
+                    </>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    ref={fileInputRef}
+                    onChange={handlePhotoInputChange}
+                    hidden
+                  />
                 </div>
                 <div className="publish-car__photo-wrapper">
-                  <PhotoGrid />
+                  <PhotoGrid images={photos.map((photo) => photo.preview)} onRemove={handlePhotoRemove} />
                 </div>
+                {photoError && <p className="publish-car__error">{photoError}</p>}
               </Field>
             </section>
 
@@ -403,7 +574,7 @@ const PublicarCarro = () => {
             </div>
           </form>
 
-          <PreviewCard data={formData} />
+          <PreviewCard data={formData} photos={photos.map((photo) => photo.preview)} />
         </div>
       </div>
     </div>
