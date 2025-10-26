@@ -118,6 +118,7 @@ function createNotificationsFromBids(bids = [], now = new Date()) {
 
 export default function Header() {
   const navigate = useNavigate();
+  const [userName, setUserName] = useState('Usuario');
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [notificationsError, setNotificationsError] = useState('');
@@ -133,6 +134,39 @@ export default function Header() {
       }),
     [],
   );
+
+  const userInitial = useMemo(() => {
+    const trimmed = userName.trim();
+    return trimmed ? trimmed.charAt(0).toUpperCase() : 'U';
+  }, [userName]);
+
+  useEffect(() => {
+    let alive = true;
+
+    const loadUser = async () => {
+      try {
+        const response = await api.get('/auth/me');
+        if (!alive) {
+          return;
+        }
+        const user = response.data?.user ?? {};
+        const fullName = [user.nombre, user.apellidos].filter(Boolean).join(' ').trim();
+        const fallback = user.nombre || user.email || 'Usuario';
+        setUserName(fullName || fallback);
+      } catch (error) {
+        if (!alive) {
+          return;
+        }
+        setUserName('Usuario');
+      }
+    };
+
+    loadUser();
+
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -325,10 +359,10 @@ export default function Header() {
           </div>
           <div className="app-header__user">
             <div className="app-header__avatar" aria-hidden="true">
-              U
+              {userInitial}
             </div>
             <div className="app-header__user-meta">
-              <span className="app-header__user-name">Usuario</span>
+              <span className="app-header__user-name">{userName}</span>
               <button
                 type="button"
                 className="app-header__logout"

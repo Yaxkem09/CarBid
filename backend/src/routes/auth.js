@@ -62,11 +62,34 @@ router.post('/login', async (req, res) => {
 router.get('/me', async (req, res) => {
   const token = req.cookies?.token;
   if (!token) return res.status(401).json({ message: 'No autorizado' });
+
   try {
     const data = jwt.verify(token, process.env.JWT_SECRET);
-    res.json({ ok: true, user: { id: data.id, email: data.email } });
-  } catch {
-    res.status(401).json({ message: 'Token inválido' });
+    const [rows] = await pool.execute(
+      'SELECT id, nombre, apellidos, email FROM users WHERE id = ? LIMIT 1',
+      [data.id],
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+
+    const user = rows[0];
+    res.json({
+      ok: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        nombre: user.nombre,
+        apellidos: user.apellidos,
+      },
+    });
+  } catch (err) {
+    if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
+      return res.status(401).json({ message: 'Token invalido' });
+    }
+    console.error(err);
+    res.status(500).json({ message: 'Error' });
   }
 });
 
