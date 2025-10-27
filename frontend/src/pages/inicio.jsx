@@ -1,7 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { vehicleBrands, vehicleModels, vehicleYears, priceRange } from '../constants/vehicleOptions';
+import { connectSocket } from '../services/socket';
 import './inicio.css';
 
 const Inicio = () => {
@@ -21,6 +22,7 @@ const Inicio = () => {
   const [searchError, setSearchError] = useState('');
   const [searchPerformed, setSearchPerformed] = useState(false);
   const navigate = useNavigate();
+  const socketRef = useRef(null);
 
   const currencyFormatter = useMemo(
     () =>
@@ -51,6 +53,79 @@ const Inicio = () => {
     return `${normalizedBase}${normalizedPath}`;
   };
 
+  const sortRecommendations = useCallback((collection) => {
+    if (!Array.isArray(collection)) {
+      return [];
+    }
+
+    return [...collection]
+      .sort((a, b) => {
+        const highestA = Number(a.highestBid ?? a.basePrice ?? 0);
+        const highestB = Number(b.highestBid ?? b.basePrice ?? 0);
+        if (highestA !== highestB) {
+          return highestB - highestA;
+        }
+
+        const endsA = a.endsAt ? new Date(a.endsAt).getTime() : Number.POSITIVE_INFINITY;
+        const endsB = b.endsAt ? new Date(b.endsAt).getTime() : Number.POSITIVE_INFINITY;
+        return endsA - endsB;
+      })
+      .slice(0, 5);
+  }, []);
+
+  const applySummaryToCollections = useCallback(
+    (summary) => {
+      if (!summary || !summary.auctionId) {
+        return;
+      }
+
+      const targetId = String(summary.auctionId);
+      const shouldRemove = summary.status === 'ended';
+
+      const updateCollection = (collection) => {
+        if (!Array.isArray(collection) || !collection.length) {
+          return collection;
+        }
+
+        if (shouldRemove) {
+          const filtered = collection.filter((item) => String(item.id) !== targetId);
+          return filtered.length === collection.length ? collection : filtered;
+        }
+
+        let changed = false;
+        const updated = collection.map((item) => {
+          if (String(item.id) !== targetId) {
+            return item;
+          }
+          changed = true;
+          return {
+            ...item,
+            status: summary.status ?? item.status,
+            highestBid:
+              summary.highestBid !== undefined ? summary.highestBid : item.highestBid,
+            endsAt: summary.endsAt ?? item.endsAt,
+            highestBidderId:
+              summary.highestBidderId !== undefined
+                ? summary.highestBidderId
+                : item.highestBidderId,
+          };
+        });
+        return changed ? updated : collection;
+      };
+
+      setListings((previous) => updateCollection(previous));
+      setSearchResults((previous) => updateCollection(previous));
+      setRecommended((previous) => {
+        const updated = updateCollection(previous);
+        if (updated === previous) {
+          return previous;
+        }
+        return sortRecommendations(updated);
+      });
+    },
+    [sortRecommendations],
+  );
+
   useEffect(() => {
     let alive = true;
     setLoading(true);
@@ -64,17 +139,7 @@ const Inicio = () => {
 
         const activeListings = activeResponse.data ?? [];
         const recommendationCandidates = recommendedResponse.data ?? [];
-        const sortedRecommendations = [...recommendationCandidates]
-          .sort((a, b) => {
-            const highestA = Number(a.highestBid ?? a.basePrice ?? 0);
-            const highestB = Number(b.highestBid ?? b.basePrice ?? 0);
-            if (highestA !== highestB) return highestB - highestA;
-
-            const endsA = a.endsAt ? new Date(a.endsAt).getTime() : Number.POSITIVE_INFINITY;
-            const endsB = b.endsAt ? new Date(b.endsAt).getTime() : Number.POSITIVE_INFINITY;
-            return endsA - endsB;
-          })
-          .slice(0, 5);
+        const sortedRecommendations = sortRecommendations(recommendationCandidates);
 
         setListings(activeListings);
         setRecommended(sortedRecommendations);
@@ -91,7 +156,40 @@ const Inicio = () => {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [sortRecommendations]);
+
+  useEffect(() => {
+    const socket = connectSocket();
+    socketRef.current = socket;
+
+    const subscribe = () => {
+      socket.emit('subscribe-listings');
+    };
+
+    const handleSummary = (summary) => {
+      applySummaryToCollections(summary);
+    };
+
+    socket.on('connect', subscribe);
+    socket.on('auction:updated', handleSummary);
+    socket.on('auction:ended', handleSummary);
+
+    if (socket.connected) {
+      subscribe();
+    }
+
+    return () => {
+      socket.off('connect', subscribe);
+      socket.off('auction:updated', handleSummary);
+      socket.off('auction:ended', handleSummary);
+      if (socket.connected) {
+        socket.emit('unsubscribe-listings');
+      }
+      if (socketRef.current === socket) {
+        socketRef.current = null;
+      }
+    };
+  }, [applySummaryToCollections]);
 
   const handleViewDetails = (id) => navigate(`/detalle-subasta/${id}`);
   const handlePublish = () => navigate('/publicar-carro');

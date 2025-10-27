@@ -1,6 +1,7 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../services/api';
+import { connectSocket } from '../services/socket';
 import './detalle-subasta.css';
 
 const formatCurrency = (value) => {
@@ -58,6 +59,10 @@ const DetalleSubasta = () => {
   const [timeLeft, setTimeLeft] = useState('');
   const [isLive, setIsLive] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [viewerId, setViewerId] = useState(null);
+  const [isLeading, setIsLeading] = useState(false);
+  const socketRef = useRef(null);
+  const viewerIdRef = useRef(null);
 
   const assetsBaseUrl = useMemo(() => {
     const baseURL = api.defaults.baseURL ?? '';
@@ -97,8 +102,46 @@ const DetalleSubasta = () => {
           setLoading(true);
         }
         const response = await api.get(`/listings/${id}`);
-        setListing(response.data.listing);
-        setBids(response.data.bids);
+        const listingData = response.data.listing ?? null;
+        const viewer = response.data.viewer?.id;
+        const viewerString = viewer !== undefined && viewer !== null ? String(viewer) : null;
+        viewerIdRef.current = viewerString;
+        setViewerId(viewerString);
+
+        const normalizedListing = listingData ? { ...listingData } : null;
+        const highestBidderId =
+          normalizedListing?.highestBidderId !== null && normalizedListing?.highestBidderId !== undefined
+            ? String(normalizedListing.highestBidderId)
+            : null;
+
+        if (normalizedListing) {
+          normalizedListing.highestBidderId = highestBidderId;
+          normalizedListing.isLeading =
+            viewerString && highestBidderId
+              ? String(highestBidderId) === viewerString
+              : false;
+        }
+
+        setListing(normalizedListing);
+
+        const normalizedBids = Array.isArray(response.data.bids)
+          ? response.data.bids.map((bid) => ({
+              ...bid,
+              bidderId:
+                bid.bidderId !== null && bid.bidderId !== undefined
+                  ? String(bid.bidderId)
+                  : null,
+            }))
+          : [];
+        setBids(normalizedBids);
+
+        setIsLeading(
+          Boolean(
+            viewerString &&
+              highestBidderId &&
+              String(highestBidderId) === viewerString,
+          ),
+        );
         setError('');
       } catch (err) {
         setError(err.response?.data?.message || 'No se pudo cargar la subasta');
@@ -111,19 +154,158 @@ const DetalleSubasta = () => {
     [id],
   );
 
+  const applySummaryUpdate = useCallback(
+    (summary) => {
+      if (!summary) {
+        return;
+      }
+
+      const targetId = String(summary.auctionId ?? '');
+      if (!targetId || targetId !== String(id)) {
+        return;
+      }
+
+      let nextIsLeadingState = null;
+
+      setListing((prev) => {
+        if (!prev || String(prev.id) !== targetId) {
+          return prev;
+        }
+
+        const next = { ...prev };
+        if (summary.status) {
+          next.status = summary.status;
+        }
+        if (summary.highestBid !== undefined) {
+          next.highestBid = summary.highestBid;
+        }
+        if (summary.minIncrement !== undefined) {
+          next.minIncrement = summary.minIncrement;
+        }
+        if (summary.basePrice !== undefined) {
+          next.basePrice = summary.basePrice;
+        }
+        if (summary.endsAt) {
+          next.endsAt = summary.endsAt;
+        }
+        if (summary.highestBidderId !== undefined) {
+          const leaderId =
+            summary.highestBidderId !== null && summary.highestBidderId !== undefined
+              ? String(summary.highestBidderId)
+              : null;
+          const viewer = viewerIdRef.current;
+          const viewerMatch =
+            viewer && leaderId ? String(leaderId) === String(viewer) : false;
+          next.highestBidderId = leaderId;
+          next.isLeading = viewerMatch;
+          nextIsLeadingState = viewerMatch;
+        }
+        return next;
+      });
+
+      if (nextIsLeadingState !== null) {
+        setIsLeading(nextIsLeadingState);
+      }
+    },
+    [id],
+  );
+
   useEffect(() => {
     loadDetails();
   }, [loadDetails]);
 
   useEffect(() => {
-    const refreshInterval = setInterval(() => {
-      loadDetails({ silent: true });
-    }, 10000);
+    viewerIdRef.current = viewerId;
+  }, [viewerId]);
+
+  useEffect(() => {
+    const socket = connectSocket();
+    socketRef.current = socket;
+
+    const ensureSubscription = () => {
+      socket.emit('subscribe-auction', id);
+    };
+
+    const handleBidCreated = (payload) => {
+      if (!payload || String(payload.auctionId) !== String(id)) {
+        return;
+      }
+
+      if (payload.summary) {
+        applySummaryUpdate(payload.summary);
+      } else if (payload.bid) {
+        const viewer = viewerIdRef.current;
+        if (viewer) {
+          const leaderFromBid =
+            payload.bid.bidderId !== null && payload.bid.bidderId !== undefined
+              ? String(payload.bid.bidderId) === String(viewer)
+              : false;
+          setIsLeading(leaderFromBid);
+        }
+      }
+
+      if (payload.bid) {
+        setBids((previous) => {
+          const nextBid = payload.bid;
+          if (!nextBid?.id) {
+            return previous;
+          }
+
+          const normalizedBid = {
+            ...nextBid,
+            bidderId:
+              nextBid.bidderId !== null && nextBid.bidderId !== undefined
+                ? String(nextBid.bidderId)
+                : null,
+          };
+
+          const alreadyExists = previous.some((item) => item.id === normalizedBid.id);
+          if (alreadyExists) {
+            return previous.map((item) => (item.id === normalizedBid.id ? normalizedBid : item));
+          }
+          return [normalizedBid, ...previous];
+        });
+      }
+    };
+
+    const handleAuctionUpdated = (summary) => {
+      if (!summary || String(summary.auctionId) !== String(id)) {
+        return;
+      }
+      applySummaryUpdate(summary);
+    };
+
+    const handleAuctionEnded = (summary) => {
+      if (!summary || String(summary.auctionId) !== String(id)) {
+        return;
+      }
+      applySummaryUpdate(summary);
+      setIsLive(false);
+      setBidError('La subasta ha finalizado.');
+    };
+
+    socket.on('connect', ensureSubscription);
+    socket.on('bid:created', handleBidCreated);
+    socket.on('auction:updated', handleAuctionUpdated);
+    socket.on('auction:ended', handleAuctionEnded);
+
+    if (socket.connected) {
+      ensureSubscription();
+    }
 
     return () => {
-      clearInterval(refreshInterval);
+      socket.off('connect', ensureSubscription);
+      socket.off('bid:created', handleBidCreated);
+      socket.off('auction:updated', handleAuctionUpdated);
+      socket.off('auction:ended', handleAuctionEnded);
+      if (socket.connected) {
+        socket.emit('unsubscribe-auction', id);
+      }
+      if (socketRef.current === socket) {
+        socketRef.current = null;
+      }
     };
-  }, [loadDetails]);
+  }, [id, applySummaryUpdate]);
 
   useEffect(() => {
     if (!listing?.endsAt) {
@@ -233,6 +415,18 @@ const DetalleSubasta = () => {
   const sortedBids = [...bids].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
   );
+  const leadingBidId = sortedBids[0]?.id ?? null;
+  const viewerIdString = viewerId !== null && viewerId !== undefined ? String(viewerId) : null;
+  const leaderLabelTitle = listing.status === 'ended' ? 'Ganador final:' : 'Lider provisional:';
+  const leaderLabelValue = (() => {
+    if (!highestBidAmount) {
+      return 'Sin ofertas';
+    }
+    if (listing.status === 'ended') {
+      return isLeading ? 'Tu oferta gano' : 'Otro usuario gano';
+    }
+    return isLeading ? 'Tu oferta lidera' : 'Otro usuario lidera';
+  })();
   const hasImages = Array.isArray(listing.images) && listing.images.length > 0;
   const currentImageSrc = hasImages
     ? resolveImageSrc(listing.images[activeImageIndex])
@@ -311,6 +505,10 @@ const DetalleSubasta = () => {
             </strong>
           </p>
           <p>
+            <span className="detalle-subasta__stats-label">{leaderLabelTitle}</span>{' '}
+            <strong>{leaderLabelValue}</strong>
+          </p>
+          <p>
             <span className="detalle-subasta__stats-label">Incremento minimo:</span>{' '}
             <strong>{formatCurrency(effectiveMinIncrement)}</strong>
           </p>
@@ -358,12 +556,34 @@ const DetalleSubasta = () => {
 
         <h3>Historial de ofertas</h3>
         <ul className="detalle-subasta__bid-list">
-          {sortedBids.map((bid) => (
-            <li key={bid.id}>
-              <strong>{formatCurrency(bid.amount)}</strong> |{' '}
-              {formatDateTime(bid.createdAt)}
-            </li>
-          ))}
+          {sortedBids.map((bid) => {
+            const isLeadingBid = bid.id === leadingBidId;
+            const bidBelongsToViewer =
+              viewerIdString && bid.bidderId
+                ? String(bid.bidderId) === viewerIdString
+                : false;
+            const statusLabel = listing?.status === 'ended'
+              ? (bidBelongsToViewer ? 'Tu oferta gano' : 'Oferta ganadora')
+              : (bidBelongsToViewer ? 'Tu oferta lidera' : 'Oferta lider');
+
+            return (
+              <li
+                key={bid.id}
+                className={`detalle-subasta__bid${
+                  isLeadingBid ? ' detalle-subasta__bid--leading' : ''
+                }`}
+              >
+                <div>
+                  <strong>{formatCurrency(bid.amount)}</strong> | {formatDateTime(bid.createdAt)}
+                </div>
+                {isLeadingBid && (
+                  <span className="detalle-subasta__bid-status">
+                    {statusLabel}
+                  </span>
+                )}
+              </li>
+            );
+          })}
           {sortedBids.length === 0 && <li>Todavia no hay ofertas.</li>}
         </ul>
       </section>

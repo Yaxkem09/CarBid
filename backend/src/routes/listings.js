@@ -5,6 +5,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { pool } from '../db/pool.js';
 import { auth } from '../middleware/auth.js';
+import { emitBidCreated } from '../realtime/events.js';
 
 const router = Router();
 
@@ -96,8 +97,18 @@ function cleanupFiles(files) {
   });
 }
 
-function mapListing(row, images = []) {
+function mapListing(row, images = [], viewerId = null) {
   const normalizedImages = Array.isArray(images) ? images : [];
+  const rawHighestBidderId = row.highest_bidder_id ?? row.highestBidderId ?? null;
+  const parsedHighestBidderId =
+    rawHighestBidderId !== null && rawHighestBidderId !== undefined
+      ? Number(rawHighestBidderId)
+      : null;
+  const highestBidderId = Number.isNaN(parsedHighestBidderId) ? null : parsedHighestBidderId;
+
+  const parsedViewerId =
+    viewerId !== null && viewerId !== undefined ? Number(viewerId) : null;
+  const numericViewerId = Number.isNaN(parsedViewerId) ? null : parsedViewerId;
 
   return {
     id: row.id,
@@ -114,6 +125,11 @@ function mapListing(row, images = []) {
     createdAt: row.created_at,
     highestBid: row.highest_bid !== null ? Number(row.highest_bid) : null,
     images: normalizedImages,
+    highestBidderId: highestBidderId,
+    isLeading:
+      highestBidderId !== null && numericViewerId !== null
+        ? highestBidderId === numericViewerId
+        : false,
   };
 }
 
@@ -211,7 +227,7 @@ router.get('/', auth, async (req, res) => {
     const [rows] = await pool.execute(sql, params);
     const imagesMap = await fetchImagesMap(rows.map((row) => row.id));
 
-    res.json(rows.map((row) => mapListing(row, imagesMap.get(row.id))));
+    res.json(rows.map((row) => mapListing(row, imagesMap.get(row.id), req.user.id)));
   } catch (error) {
     console.error('Error fetching listings:', error);
     res.status(500).json({ message: 'Error al obtener las subastas.' });
@@ -221,11 +237,27 @@ router.get('/', auth, async (req, res) => {
 router.get('/:id', auth, async (req, res) => {
   const { id } = req.params;
   const [[listing]] = await pool.execute(
-    `SELECT a.*, (
-        SELECT MAX(b.amount)
-        FROM bids b
-        WHERE b.auction_id = a.id
-      ) AS highest_bid
+    `SELECT a.*,
+        (
+          SELECT MAX(b.amount)
+          FROM bids b
+          WHERE b.auction_id = a.id
+        ) AS highest_bid,
+        (
+          SELECT b2.bidder_id
+          FROM bids b2
+          WHERE b2.auction_id = a.id
+          ORDER BY b2.amount DESC, b2.created_at ASC
+          LIMIT 1
+        ) AS highest_bidder_id,
+        (
+          SELECT u.nombre
+          FROM bids b3
+          LEFT JOIN users u ON u.id = b3.bidder_id
+          WHERE b3.auction_id = a.id
+          ORDER BY b3.amount DESC, b3.created_at ASC
+          LIMIT 1
+        ) AS highest_bidder_name
       FROM auctions a
       WHERE a.id = ?`,
     [id]
@@ -246,8 +278,13 @@ router.get('/:id', auth, async (req, res) => {
     [id]
   );
 
+  const viewerId = req.user.id;
+
   res.json({
-    listing: mapListing(listing, imagesMap.get(listing.id)),
+    listing: mapListing(listing, imagesMap.get(listing.id), viewerId),
+    viewer: {
+      id: viewerId,
+    },
     bids: bids.map((bid) => ({
       id: bid.id,
       userId: bid.bidder_id,
@@ -400,10 +437,56 @@ router.post('/:id/bids', auth, async (req, res) => {
     return res.status(400).json({ message: `La oferta debe superar $${minAmount}.` });
   }
 
-  await pool.execute(
+  const [insertResult] = await pool.execute(
     'INSERT INTO bids (auction_id, bidder_id, amount) VALUES (?, ?, ?)',
     [id, req.user.id, amount]
   );
+
+  const [[bidRow]] = await pool.execute(
+    `SELECT b.id, b.amount, b.created_at, b.bidder_id, u.nombre
+       FROM bids b
+       LEFT JOIN users u ON u.id = b.bidder_id
+       WHERE b.id = ?`,
+    [insertResult.insertId]
+  );
+
+  const [[summaryRow]] = await pool.execute(
+    `SELECT
+        a.id,
+        a.status,
+        a.ends_at,
+        a.base_price,
+        a.min_increment,
+        (
+          SELECT MAX(b.amount)
+          FROM bids b
+          WHERE b.auction_id = a.id
+        ) AS highest_bid,
+        (
+          SELECT b2.bidder_id
+          FROM bids b2
+          WHERE b2.auction_id = a.id
+          ORDER BY b2.amount DESC, b2.created_at ASC
+          LIMIT 1
+        ) AS highest_bidder_id,
+        (
+          SELECT u.nombre
+          FROM bids b3
+          LEFT JOIN users u ON u.id = b3.bidder_id
+          WHERE b3.auction_id = a.id
+          ORDER BY b3.amount DESC, b3.created_at ASC
+          LIMIT 1
+        ) AS highest_bidder_name
+      FROM auctions a
+      WHERE a.id = ?`,
+    [id]
+  );
+
+  emitBidCreated({
+    auctionId: id,
+    bidRow,
+    summaryRow,
+  });
 
   res.status(201).json({ ok: true });
 });

@@ -6,16 +6,37 @@ import jwt from 'jsonwebtoken';
 
 const router = Router();
 
+function buildCookieOptions({ includeMaxAge = false } = {}) {
+  const isProduction = process.env.NODE_ENV === 'production';
+  const secure = Boolean(isProduction);
+  const sameSite = secure ? 'None' : 'Lax';
+
+  const domainEnv = process.env.COOKIE_DOMAIN?.trim();
+  const normalizedDomain = domainEnv && !/^localhost$/i.test(domainEnv) && !/^127\.0\.0\.1$/i.test(domainEnv)
+    ? domainEnv
+    : undefined;
+
+  const baseOptions = {
+    httpOnly: true,
+    secure,
+    sameSite,
+    path: '/',
+  };
+
+  if (normalizedDomain) {
+    baseOptions.domain = normalizedDomain;
+  }
+
+  if (includeMaxAge) {
+    baseOptions.maxAge = 7 * 24 * 60 * 60 * 1000;
+  }
+
+  return baseOptions;
+}
+
 function setAuthCookie(res, payload) {
   const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '7d' });
-  res.cookie('token', token, {
-    httpOnly: true,
-    secure: false,        // en local false; en prod true con HTTPS
-    sameSite: 'Lax',      // en prod usar 'None' + secure:true
-    domain: process.env.COOKIE_DOMAIN, // en local: 'localhost'
-    path: '/',
-    maxAge: 7*24*60*60*1000
-  });
+  res.cookie('token', token, buildCookieOptions({ includeMaxAge: true }));
 }
 
 // POST /api/auth/register
@@ -95,7 +116,7 @@ router.get('/me', async (req, res) => {
 
 // POST /api/auth/logout
 router.post('/logout', (req, res) => {
-  res.clearCookie('token', { domain: process.env.COOKIE_DOMAIN, path: '/' });
+  res.clearCookie('token', buildCookieOptions());
   res.json({ ok: true });
 });
 

@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import express from 'express';
+import { createServer } from 'http';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import path from 'path';
@@ -8,6 +9,7 @@ import authRoutes from './routes/auth.js';
 import listingRoutes from './routes/listings.js';
 import bidRoutes from './routes/bids.js';
 import { startAuctionStatusJob } from './jobs/auctionStatusJob.js';
+import { initRealtime } from './realtime/socket.js';
 
 const app = express();
 app.use(express.json());
@@ -27,8 +29,11 @@ app.use('/api/auth', authRoutes);
 app.use('/api/listings', listingRoutes);
 app.use('/api/bids', bidRoutes);
 
+const httpServer = createServer(app);
+initRealtime(httpServer);
+
 startAuctionStatusJob();
 
-app.listen(process.env.PORT, () => {
+httpServer.listen(process.env.PORT, () => {
   console.log(`API escuchando en :${process.env.PORT}`);
 });

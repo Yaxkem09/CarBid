@@ -242,6 +242,31 @@
   gap: 6px;
 }
 
+.detalle-subasta__bid {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 10px 14px;
+}
+
+.detalle-subasta__bid strong {
+  color: #0f172a;
+}
+
+.detalle-subasta__bid--leading {
+  border: 2px solid #4c51bf;
+  background: #eef2ff;
+}
+
+.detalle-subasta__bid-status {
+  color: #4c51bf;
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+}
+
 .detalle-subasta__state {
   padding: 32px;
 }
