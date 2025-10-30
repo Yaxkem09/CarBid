@@ -27,6 +27,7 @@ app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 // ---------------- RUTA DE SALUD ----------------
 app.get('/health', (req, res) => res.send('ok'));
+
 // ---------------- RUTA PARA PROBAR LA BD ----------------
 app.get('/db-check', async (req, res) => {
   try {
