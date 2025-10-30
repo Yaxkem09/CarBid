@@ -1,45 +1,55 @@
 .detalle-subasta {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 24px;
-  padding: 32px;
+  grid-template-columns: minmax(360px, 1.05fr) minmax(0, 1fr);
+  gap: clamp(24px, 3vw, 40px);
+  padding: clamp(12px, 2vw, 24px);
+  align-items: start;
 }
 
 .detalle-subasta__info,
 .detalle-subasta__bids {
-  background: #fff;
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.1);
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  border-radius: var(--app-card-radius);
+  padding: clamp(22px, 3vw, 32px);
+  box-shadow: var(--app-shadow-soft);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: clamp(12px, 2vw, 20px);
+  border: 1px solid #d1d9e6;
 }
 
 .detalle-subasta__header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
+  gap: clamp(12px, 2vw, 20px);
+  flex-wrap: wrap;
+}
+
+.detalle-subasta__header h1 {
+  margin: 0;
+  font-size: clamp(2.1rem, 3vw, 2.9rem);
+  letter-spacing: -0.02em;
+  color: #0f172a;
 }
 
 .detalle-subasta__badge {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   border-radius: 999px;
-  padding: 4px 12px;
-  font-size: 0.9rem;
+  padding: 6px 14px;
+  font-size: 1rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.04em;
 }
 
 .detalle-subasta__badge::before {
   content: '';
   display: block;
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   background: currentColor;
 }
@@ -58,39 +68,55 @@
 .detalle-subasta__timer {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  background: #eef2ff;
-  border-radius: 10px;
-  padding: 12px 16px;
+  gap: 6px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(129, 140, 248, 0.2));
+  border-radius: 14px;
+  padding: 14px 18px;
+  border: 1px solid rgba(99, 102, 241, 0.18);
+  box-shadow: 0 12px 24px rgba(79, 70, 229, 0.12);
 }
 
 .detalle-subasta__timer-label {
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   color: #4c51bf;
   text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+}
+
+.detalle-subasta__timer strong {
+  font-size: clamp(1.35rem, 2.6vw, 2rem);
+  color: #1e293b;
   letter-spacing: 0.04em;
 }
 
 .detalle-subasta__gallery {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: clamp(12px, 2vw, 20px);
 }
 
 .detalle-subasta__gallery-main {
-  position: relative;
-  padding-top: 56.25%;
-  border-radius: 12px;
+  border-radius: calc(var(--app-card-radius) - 4px);
   overflow: hidden;
-  background: #f1f5f9;
+  background: #0f172a;
+  aspect-ratio: 16 / 9;
+  min-height: 320px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.2);
 }
 
 .detalle-subasta__gallery-main img {
-  position: absolute;
-  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: transform 0.5s ease;
+}
+
+.detalle-subasta__gallery-main:hover img {
+  transform: scale(1.03);
 }
 
 .detalle-subasta__gallery-thumbs {
@@ -101,14 +127,15 @@
 
 .detalle-subasta__thumb {
   border: 2px solid transparent;
-  border-radius: 10px;
+  border-radius: 12px;
   overflow: hidden;
   padding: 0;
   background: transparent;
   cursor: pointer;
-  width: 72px;
-  height: 72px;
+  width: 92px;
+  aspect-ratio: 4 / 3;
   display: inline-flex;
+  transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
 }
 
 .detalle-subasta__thumb img {
@@ -119,6 +146,11 @@
 
 .detalle-subasta__thumb--active {
   border-color: #4c51bf;
+  box-shadow: 0 0 0 3px rgba(76, 81, 191, 0.25);
+}
+
+.detalle-subasta__thumb:hover {
+  transform: translateY(-3px);
 }
 
 .detalle-subasta__gallery-placeholder {
@@ -132,104 +164,158 @@
 
 .detalle-subasta__stats {
   display: grid;
-  gap: 6px;
-  margin-bottom: 8px;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 16px 18px;
+  background: rgba(226, 232, 240, 0.45);
+  border-radius: 16px;
+  border: 1px solid #dce3f2;
+}
+
+.detalle-subasta__stats p {
+  margin: 0;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 1.05rem;
+  color: #0f172a;
 }
 
 .detalle-subasta__stats-label {
   color: #475569;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .detalle-subasta__meta {
-  color: #64748b;
+  color: #475569;
+  font-size: clamp(1.05rem, 1.6vw, 1.2rem);
+  letter-spacing: -0.01em;
 }
 
 .detalle-subasta__description {
-  line-height: 1.6;
+  margin: 0;
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: rgba(148, 163, 184, 0.12);
+  color: #1e293b;
+  font-size: clamp(1.02rem, 1.4vw, 1.15rem);
+  line-height: 1.7;
 }
 
 .detalle-subasta__closing {
   margin-top: auto;
-  font-size: 0.95rem;
+  font-size: 1rem;
   color: #1e293b;
+  background: rgba(96, 165, 250, 0.16);
+  padding: 10px 14px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .detalle-subasta__form {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
 }
 
 .detalle-subasta__form input {
-  padding: 10px 12px;
-  border-radius: 6px;
-  border: 1px solid #cbd5f5;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #c6d0e6;
+  font-size: 1rem;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.detalle-subasta__form input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
 }
 
 .detalle-subasta__form button {
   align-self: flex-start;
-  background: #22c55e;
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
   color: #fff;
   border: none;
-  padding: 8px 16px;
-  border-radius: 6px;
+  padding: 12px 20px;
+  border-radius: 999px;
   cursor: pointer;
   font-weight: 600;
+  transition: background 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .detalle-subasta__form button:disabled {
   background: #86efac;
   cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.detalle-subasta__form button:not(:disabled):hover,
+.detalle-subasta__form button:not(:disabled):focus-visible {
+  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 16px 30px rgba(34, 197, 94, 0.28);
 }
 
 .detalle-subasta__quick-buttons {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px;
 }
 
 .detalle-subasta__quick-buttons button {
-  background: #e0f2fe;
+  background: rgba(14, 165, 233, 0.18);
   color: #0369a1;
   border: none;
-  padding: 6px 12px;
+  padding: 8px 16px;
   border-radius: 999px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s ease;
+  transition: background 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease;
 }
 
 .detalle-subasta__quick-buttons button:hover:not(:disabled) {
-  background: #bae6fd;
+  background: rgba(14, 165, 233, 0.28);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(14, 165, 233, 0.25);
 }
 
 .detalle-subasta__quick-buttons button:disabled {
   background: #e2e8f0;
   color: #94a3b8;
   cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
 }
 
 .detalle-subasta__total {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #f1f5f9;
-  border-radius: 8px;
-  padding: 10px 14px;
+  background: linear-gradient(135deg, rgba(219, 234, 254, 0.7), rgba(191, 219, 254, 0.9));
+  border-radius: 14px;
+  padding: 12px 18px;
   font-weight: 600;
+  color: #0f172a;
+  border: 1px solid rgba(96, 165, 250, 0.4);
 }
 
 .detalle-subasta__error {
   color: #dc2626;
   font-weight: 600;
+  background: #fee2e2;
+  padding: 12px 16px;
+  border-radius: 12px;
 }
 
 .detalle-subasta__ended-note {
   background: #fef2f2;
   color: #991b1b;
-  padding: 10px 14px;
-  border-radius: 8px;
+  padding: 12px 16px;
+  border-radius: 12px;
   font-weight: 500;
 }
 
@@ -239,7 +325,7 @@
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 10px;
 }
 
 .detalle-subasta__bid {
@@ -247,8 +333,16 @@
   justify-content: space-between;
   align-items: center;
   background: #f8fafc;
-  border-radius: 8px;
-  padding: 10px 14px;
+  border-radius: 12px;
+  padding: 12px 18px;
+  border: 1px solid rgba(226, 232, 240, 0.7);
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.detalle-subasta__bid:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.12);
+  border-color: rgba(99, 102, 241, 0.25);
 }
 
 .detalle-subasta__bid strong {
@@ -256,23 +350,53 @@
 }
 
 .detalle-subasta__bid--leading {
-  border: 2px solid #4c51bf;
-  background: #eef2ff;
+  border: 2px solid rgba(79, 70, 229, 0.7);
+  background: rgba(224, 231, 255, 0.55);
+  box-shadow: 0 12px 28px rgba(79, 70, 229, 0.25);
 }
 
 .detalle-subasta__bid-status {
   color: #4c51bf;
   font-weight: 600;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   text-transform: uppercase;
 }
 
 .detalle-subasta__state {
-  padding: 32px;
+  padding: clamp(24px, 4vw, 48px);
+  text-align: center;
+  font-size: 1.1rem;
+  color: #334155;
 }
 
 .detalle-subasta__state--error {
   color: #dc2626;
+  background: #fee2e2;
+  border-radius: 16px;
+  display: inline-block;
+  margin: 0 auto;
+  padding: 16px 24px;
+}
+
+@media (max-width: 1080px) {
+  .detalle-subasta {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .detalle-subasta__header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .detalle-subasta__timer {
+    width: 100%;
+  }
+
+  .detalle-subasta__quick-buttons {
+    justify-content: center;
+  }
 }
 
 @keyframes detalle-subasta-pulse {

@@ -1,85 +1,99 @@
 .historial-page {
-  padding: 32px 48px;
-  background-color: #f5f6fa;
+  padding: clamp(12px, 2vw, 24px);
+  display: grid;
+  gap: clamp(24px, 3vw, 40px);
+  background: transparent;
   min-height: 100%;
 }
 
 .historial-page h1 {
-  font-size: 28px;
+  margin: 0;
+  font-size: clamp(2.1rem, 3vw, 2.7rem);
   font-weight: 700;
-  margin-bottom: 24px;
   color: #0f172a;
+  letter-spacing: -0.015em;
 }
 
 .historial-page__error {
   color: #dc2626;
   font-weight: 600;
-  padding: 12px 16px;
+  padding: 14px 18px;
   background-color: #fee2e2;
-  border-radius: 8px;
-  max-width: 640px;
+  border-radius: 14px;
+  max-width: 720px;
+  box-shadow: 0 10px 20px rgba(220, 38, 38, 0.12);
 }
 
 .historial-page__sections {
-  display: flex;
-  flex-direction: column;
-  gap: 40px;
+  display: grid;
+  gap: clamp(28px, 3.4vw, 44px);
 }
 
 .historial-card {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+  display: grid;
+  gap: clamp(18px, 2.8vw, 28px);
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  border-radius: var(--app-card-radius);
+  padding: clamp(22px, 3vw, 32px);
+  border: 1px solid #d1d9e6;
+  box-shadow: var(--app-shadow-soft);
 }
 
 .historial-card h2 {
-  font-size: 22px;
+  font-size: clamp(1.5rem, 2.2vw, 2rem);
   font-weight: 600;
-  color: #111827;
+  color: #0f172a;
+  margin: 0;
+  letter-spacing: -0.01em;
 }
 
 .historial-table {
-  border: 1px solid #d9ddea;
-  border-radius: 12px;
+  border: 1px solid #d1d9e6;
+  border-radius: 18px;
   background-color: #ffffff;
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
+  box-shadow: var(--app-shadow-soft);
   overflow: hidden;
-  overflow-x: auto;
 }
 
 .historial-table__header,
 .historial-table__row {
   display: grid;
-  grid-template-columns: var(--historial-columns, 2fr 1fr 1fr 1fr 120px);
-  gap: 16px;
+  grid-template-columns: var(--historial-columns, 2fr 1fr 1fr 1fr 160px);
+  gap: 18px;
   align-items: center;
-  padding: 18px 24px;
-  min-width: 700px;
+  padding: 18px clamp(18px, 3vw, 28px);
+  min-width: 760px;
 }
 
 .historial-table__header {
-  background-color: #f3f4f6;
-  font-weight: 600;
-  color: #1f2937;
+  background-color: #eef2ff;
+  font-weight: 700;
+  color: #312e81;
   text-transform: uppercase;
-  font-size: 13px;
-  letter-spacing: 0.04em;
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
 }
 
 .historial-table__row {
-  color: #111827;
-  font-size: 15px;
+  color: #0f172a;
+  font-size: 1rem;
   border-top: 1px solid #e5e7eb;
+  transition: background 0.25s ease;
 }
 
 .historial-table__row:nth-child(even) {
-  background-color: #fafbff;
+  background-color: #f8fafc;
+}
+
+.historial-table__row:hover {
+  background: rgba(226, 232, 240, 0.6);
 }
 
 .historial-table__row span,
 .historial-table__header span {
   display: inline-flex;
   align-items: center;
+  gap: 6px;
 }
 
 .historial-table__row span:not(:first-child),
@@ -94,28 +108,51 @@
 }
 
 .historial-table__empty {
-  padding: 24px;
+  padding: 28px;
   text-align: center;
   color: #6b7280;
-  font-size: 15px;
+  font-size: 1rem;
 }
 
 .historial-table button {
-  background-color: #d97706;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
   color: #ffffff;
   border: none;
-  border-radius: 8px;
-  padding: 8px 18px;
+  border-radius: 999px;
+  padding: 10px 20px;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 0.95rem;
   cursor: pointer;
-  transition: background-color 0.2s ease, transform 0.2s ease;
+  transition: background 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease;
 }
 
-.historial-table button:hover {
-  background-color: #b45309;
+.historial-table button:hover,
+.historial-table button:focus-visible {
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px rgba(217, 119, 6, 0.28);
 }
 
 .historial-table button:active {
   transform: translateY(1px);
+}
+
+@media (max-width: 960px) {
+  .historial-table__header,
+  .historial-table__row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    min-width: 100%;
+    gap: 12px;
+  }
+
+  .historial-table__header span,
+  .historial-table__row span {
+    justify-content: flex-start;
+    text-align: left;
+  }
+
+  .historial-table__row span:last-child,
+  .historial-table__header span:last-child {
+    justify-content: flex-start;
+  }
 }

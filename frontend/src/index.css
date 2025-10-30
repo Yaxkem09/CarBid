@@ -1,10 +1,21 @@
+:root {
+  --app-max-width: min(98vw, 1500px);
+  --app-shell-padding-x: clamp(18px, 4vw, 56px);
+  --app-shell-padding-y: clamp(24px, 4vw, 56px);
+  --app-card-radius: 16px;
+  --app-shadow-soft: 0 18px 40px rgba(15, 23, 42, 0.08);
+  --app-shadow-hover: 0 24px 52px rgba(15, 23, 42, 0.14);
+}
+
 body {
   margin: 0;
   font-family: 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans',
     'Droid Sans', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: #f1f5f9;
+  font-size: clamp(16px, 0.45vw + 15px, 18px);
+  line-height: 1.6;
+  background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 40%, #e0e7ff 100%);
   color: #0f172a;
 }
 
@@ -12,9 +23,21 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #f8fafc;
+  background: transparent;
 }
 
 .app-content {
   flex: 1;
+  width: 100%;
+  max-width: var(--app-max-width);
+  margin: 0 auto;
+  padding: var(--app-shell-padding-y) var(--app-shell-padding-x)
+    calc(var(--app-shell-padding-y) + 24px);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(24px, 4vw, 48px);
+}
+
+.app-content > * {
+  width: 100%;
 }

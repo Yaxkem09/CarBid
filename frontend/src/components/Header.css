@@ -5,27 +5,27 @@
 }
 
 .app-header__inner {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 32px;
-  max-width: 1200px;
-  padding: 0 32px;
+  gap: clamp(24px, 4vw, 56px);
+  max-width: var(--app-max-width);
+  padding: 0 var(--app-shell-padding-x);
   margin: 0 auto;
   width: 100%;
   box-sizing: border-box;
 }
 
 .app-header__brand {
-  font-size: 1.75rem;
+  font-size: clamp(1.9rem, 1vw + 1.6rem, 2.35rem);
   font-weight: 700;
   white-space: nowrap;
 }
 
 .app-header__nav {
   display: flex;
-  gap: 24px;
-  flex: 1;
+  gap: clamp(24px, 4vw, 60px);
+  flex: 1 1 auto;
   justify-content: center;
   align-items: center;
   flex-wrap: wrap;
@@ -35,9 +35,10 @@
   color: #cbd5f5;
   text-decoration: none;
   font-weight: 500;
-  padding: 10px 0;
+  padding: 12px 0;
   position: relative;
-  transition: color 0.2s ease;
+  font-size: clamp(1rem, 0.25vw + 0.95rem, 1.15rem);
+  transition: color 0.25s ease, transform 0.25s ease;
 }
 
 .app-header__link::after {
@@ -54,6 +55,7 @@
 .app-header__link:hover,
 .app-header__link:focus {
   color: #ffffff;
+  transform: translateY(-2px);
 }
 
 .app-header__link--active::after {
@@ -63,7 +65,8 @@
 .app-header__actions {
   display: flex;
   align-items: center;
-  gap: 20px;
+  justify-content: flex-end;
+  gap: clamp(18px, 3vw, 40px);
 }
 
 .app-header__notifications {
@@ -71,8 +74,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   background: rgba(148, 163, 184, 0.15);
   border: 1px solid rgba(148, 163, 184, 0.25);
@@ -225,18 +228,19 @@
 .app-header__user {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 18px;
 }
 
 .app-header__avatar {
-  width: 42px;
-  height: 42px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   background: #1d4ed8;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font-weight: 700;
+  font-size: 1.2rem;
 }
 
 .app-header__user-meta {
@@ -248,7 +252,7 @@
 
 .app-header__user-name {
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: 1.05rem;
 }
 
 .app-header__logout {
@@ -260,28 +264,30 @@
   cursor: pointer;
   font-weight: 600;
   line-height: 1;
-  transition: background 0.2s ease, transform 0.2s ease;
+  transition: background 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease;
 }
 
 .app-header__logout:hover,
 .app-header__logout:focus {
   background: #dc2626;
   transform: translateY(-1px);
+  box-shadow: 0 12px 26px rgba(220, 38, 38, 0.25);
 }
 
 @media (max-width: 960px) {
   .app-header__inner {
-    gap: 24px;
-    padding: 0 24px;
+    gap: clamp(18px, 4vw, 32px);
+    padding: 0 clamp(18px, 5vw, 32px);
   }
 
   .app-header__nav {
-    gap: 16px;
+    gap: clamp(16px, 4vw, 28px);
   }
 }
 
 @media (max-width: 768px) {
   .app-header__inner {
+    display: flex;
     flex-direction: column;
     align-items: stretch;
     gap: 20px;
