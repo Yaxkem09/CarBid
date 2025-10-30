@@ -10,49 +10,52 @@ import listingRoutes from './routes/listings.js';
 import bidRoutes from './routes/bids.js';
 import { startAuctionStatusJob } from './jobs/auctionStatusJob.js';
 import { initRealtime } from './realtime/socket.js';
-import { pool } from './db/pool.js'; // 👈 AGREGA ESTA IMPORTACIÓN
+import { ensureDatabaseConnection } from './db/orm.js';
 
-// ---------------- CONFIGURACIÓN BÁSICA ----------------
+try {
+  await ensureDatabaseConnection();
+  console.log('Database connection ready.');
+} catch (error) {
+  console.error('Unable to connect to the database:', error);
+  process.exit(1);
+}
+
 const app = express();
 app.use(express.json());
 app.use(cookieParser());
-app.use(cors({
-  origin: process.env.FRONTEND_ORIGIN,
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: process.env.FRONTEND_ORIGIN,
+    credentials: true,
+  }),
+);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
-// ---------------- RUTA DE SALUD ----------------
-app.get('/health', (req, res) => res.send('ok'));
+app.get('/health', (_req, res) => res.send('ok'));
 
-// ---------------- RUTA PARA PROBAR LA BD ----------------
-app.get('/db-check', async (req, res) => {
+app.get('/db-check', async (_req, res) => {
   try {
-    const [rows] = await pool.query('SELECT NOW() AS fecha');
-    res.send(`✅ Conexión exitosa a la BD. Fecha: ${rows[0].fecha}`);
+    await ensureDatabaseConnection();
+    res.send(`Database connection OK. Timestamp: ${new Date().toISOString()}`);
   } catch (err) {
-    console.error('❌ Error en la conexión a la BD:', err.message);
-    res.status(500).send('Error en la conexión a la base de datos: ' + err.message);
+    console.error('Database connectivity error:', err.message);
+    res.status(500).send('Database connection error: ' + err.message);
   }
 });
 
-// ---------------- RUTAS PRINCIPALES ----------------
 app.use('/api/auth', authRoutes);
 app.use('/api/listings', listingRoutes);
 app.use('/api/bids', bidRoutes);
 
-// ---------------- SERVIDOR HTTP ----------------
-const httpServer = createServer(app); // 👈 AQUÍ va esta línea
+const httpServer = createServer(app);
 
-// ---------------- FUNCIONES AUXILIARES ----------------
 initRealtime(httpServer);
 startAuctionStatusJob();
 
-// ---------------- INICIAR SERVIDOR ----------------
 const PORT = process.env.PORT || 8080;
 httpServer.listen(PORT, () => {
-  console.log(`✅ API escuchando en el puerto ${PORT}`);
+  console.log(`API listening on port ${PORT}`);
 });

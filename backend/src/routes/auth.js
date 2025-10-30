@@ -1,6 +1,6 @@
 // src/routes/auth.js
 import { Router } from 'express';
-import { pool } from '../db/pool.js';
+import { User } from '../db/orm.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
@@ -47,15 +47,19 @@ router.post('/register', async (req, res) => {
   }
   const hash = await bcrypt.hash(password, 10);
   try {
-    const sql = `
-      INSERT INTO users (nombre, apellidos, genero, telefono, email, password_hash)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `;
-    const [r] = await pool.execute(sql, [nombre, apellidos, genero, telefono ?? null, email, hash]);
-    setAuthCookie(res, { id: r.insertId, email });
+    // ORM: creamos usuario con Sequelize para evitar SQL manual.
+    const createdUser = await User.create({
+      nombre,
+      apellidos,
+      genero,
+      telefono: telefono ?? null,
+      email,
+      passwordHash: hash,
+    });
+    setAuthCookie(res, { id: createdUser.id, email });
     res.json({ ok: true });
   } catch (e) {
-    if (e.code === 'ER_DUP_ENTRY') return res.status(409).json({ message: 'Email ya registrado' });
+    if (e.name === 'SequelizeUniqueConstraintError') return res.status(409).json({ message: 'Email ya registrado' });
     console.error(e);
     res.status(500).json({ message: 'Error' });
   }
@@ -66,17 +70,15 @@ router.post('/login', async (req, res) => {
   const { email, password } = req.body ?? {};
   if (!email || !password) return res.status(400).json({ message: 'Faltan credenciales' });
 
-  const [rows] = await pool.execute(
-    'SELECT id, password_hash, nombre FROM users WHERE email=?',
-    [email]
-  );
-  if (!rows.length) return res.status(401).json({ message: 'Credenciales' });
+  // ORM: buscamos al usuario con Sequelize.
+  const user = await User.findOne({ where: { email } });
+  if (!user) return res.status(401).json({ message: 'Credenciales' });
 
-  const ok = await bcrypt.compare(password, rows[0].password_hash);
+  const ok = await bcrypt.compare(password, user.passwordHash);
   if (!ok) return res.status(401).json({ message: 'Credenciales' });
 
-  setAuthCookie(res, { id: rows[0].id, email });
-  res.json({ ok: true, user: { id: rows[0].id, nombre: rows[0].nombre, email } });
+  setAuthCookie(res, { id: user.id, email });
+  res.json({ ok: true, user: { id: user.id, nombre: user.nombre, email } });
 });
 
 // GET /api/auth/me (opcional para pruebas)
@@ -86,16 +88,15 @@ router.get('/me', async (req, res) => {
 
   try {
     const data = jwt.verify(token, process.env.JWT_SECRET);
-    const [rows] = await pool.execute(
-      'SELECT id, nombre, apellidos, email FROM users WHERE id = ? LIMIT 1',
-      [data.id],
-    );
+    // ORM: recuperamos al usuario autenticado con Sequelize.
+    const user = await User.findByPk(data.id, {
+      attributes: ['id', 'nombre', 'apellidos', 'email'],
+    });
 
-    if (!rows.length) {
+    if (!user) {
       return res.status(404).json({ message: 'Usuario no encontrado' });
     }
 
-    const user = rows[0];
     res.json({
       ok: true,
       user: {

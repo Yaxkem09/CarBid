@@ -3,7 +3,8 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import { pool } from '../db/pool.js';
+import { Op } from 'sequelize';
+import { Auction, AuctionImage, Bid, User, sequelize } from '../db/orm.js';
 import { auth } from '../middleware/auth.js';
 import { emitBidCreated } from '../realtime/events.js';
 
@@ -97,9 +98,13 @@ function cleanupFiles(files) {
   });
 }
 
-function mapListing(row, images = [], viewerId = null) {
+function mapListing(row, images = [], viewerId = null, extras = {}) {
   const normalizedImages = Array.isArray(images) ? images : [];
-  const rawHighestBidderId = row.highest_bidder_id ?? row.highestBidderId ?? null;
+  const rawHighestBidderId =
+    extras.highestBidderId ??
+    row.highest_bidder_id ??
+    row.highestBidderId ??
+    null;
   const parsedHighestBidderId =
     rawHighestBidderId !== null && rawHighestBidderId !== undefined
       ? Number(rawHighestBidderId)
@@ -109,21 +114,32 @@ function mapListing(row, images = [], viewerId = null) {
   const parsedViewerId =
     viewerId !== null && viewerId !== undefined ? Number(viewerId) : null;
   const numericViewerId = Number.isNaN(parsedViewerId) ? null : parsedViewerId;
+  const rawHighestBid =
+    extras.highestBid ??
+    row.highest_bid ??
+    row.highestBid ??
+    null;
+  const highestBid =
+    rawHighestBid !== null && rawHighestBid !== undefined
+      ? Number(rawHighestBid)
+      : null;
+  const basePriceRaw = row.base_price ?? row.basePrice;
+  const minIncrementRaw = row.min_increment ?? row.minIncrement;
 
   return {
     id: row.id,
-    sellerId: row.seller_id,
+    sellerId: row.seller_id ?? row.sellerId,
     title: row.title,
     brand: row.brand,
     model: row.model,
     year: row.year,
-    basePrice: Number(row.base_price),
-    minIncrement: row.min_increment !== null ? Number(row.min_increment) : null,
+    basePrice: basePriceRaw !== undefined && basePriceRaw !== null ? Number(basePriceRaw) : null,
+    minIncrement: minIncrementRaw !== undefined && minIncrementRaw !== null ? Number(minIncrementRaw) : null,
     description: row.description ?? '',
     status: row.status,
-    endsAt: row.ends_at,
-    createdAt: row.created_at,
-    highestBid: row.highest_bid !== null ? Number(row.highest_bid) : null,
+    endsAt: row.ends_at ?? row.endsAt ?? null,
+    createdAt: row.created_at ?? row.createdAt ?? null,
+    highestBid,
     images: normalizedImages,
     highestBidderId: highestBidderId,
     isLeading:
@@ -138,27 +154,23 @@ async function fetchImagesMap(listingIds) {
     return new Map();
   }
 
-  const placeholders = listingIds.map(() => '?').join(', ');
-  const [imageRows] = await pool.query(
-    `SELECT auction_id, image_path
-       FROM auction_images
-       WHERE auction_id IN (${placeholders})
-       ORDER BY id`,
-    listingIds,
-  );
+  const imageRows = await AuctionImage.findAll({
+    where: { auctionId: listingIds },
+    order: [['id', 'ASC']],
+    raw: true,
+  });
 
   return imageRows.reduce((map, imageRow) => {
-    if (!map.has(imageRow.auction_id)) {
-      map.set(imageRow.auction_id, []);
+    const auctionId = imageRow.auctionId ?? imageRow.auction_id;
+    const imagePath = imageRow.imagePath ?? imageRow.image_path;
+
+    if (!map.has(auctionId)) {
+      map.set(auctionId, []);
     }
 
-    map.get(imageRow.auction_id).push(imageRow.image_path);
+    map.get(auctionId).push(imagePath);
     return map;
   }, new Map());
-}
-
-function formatDate(date) {
-  return date.toISOString().slice(0, 19).replace('T', ' ');
 }
 
 router.get('/', auth, async (req, res) => {
@@ -171,63 +183,78 @@ router.get('/', auth, async (req, res) => {
     const minPrice = Number.parseFloat(req.query.minPrice);
     const maxPrice = Number.parseFloat(req.query.maxPrice);
 
-    const conditions = [];
-    const params = [];
+    const where = {};
 
     if (mine) {
-      conditions.push('a.seller_id = ?');
-      params.push(req.user.id);
+      where.sellerId = req.user.id;
     }
 
     if (status) {
-      conditions.push('a.status = ?');
-      params.push(status);
+      where.status = status;
     }
 
     if (brand) {
-      conditions.push('a.brand = ?');
-      params.push(brand);
+      where.brand = brand;
     }
 
     if (model) {
-      conditions.push('a.model = ?');
-      params.push(model);
+      where.model = model;
     }
 
     if (Number.isInteger(year)) {
-      conditions.push('a.year = ?');
-      params.push(year);
+      where.year = year;
     }
 
-    if (Number.isFinite(minPrice)) {
-      conditions.push('a.base_price >= ?');
-      params.push(minPrice);
+    if (Number.isFinite(minPrice) && Number.isFinite(maxPrice)) {
+      where.basePrice = { [Op.between]: [minPrice, maxPrice] };
+    } else if (Number.isFinite(minPrice)) {
+      where.basePrice = { [Op.gte]: minPrice };
+    } else if (Number.isFinite(maxPrice)) {
+      where.basePrice = { [Op.lte]: maxPrice };
     }
 
-    if (Number.isFinite(maxPrice)) {
-      conditions.push('a.base_price <= ?');
-      params.push(maxPrice);
+    // ORM: listamos subastas usando Sequelize con filtros seguros.
+    const rows = await Auction.findAll({
+      where,
+      order: [['createdAt', 'DESC']],
+      raw: true,
+    });
+
+    const listingIds = rows.map((row) => row.id);
+    const imagesMap = await fetchImagesMap(listingIds);
+
+    const topBids = listingIds.length
+      ? await Bid.findAll({
+          where: { auctionId: listingIds },
+          order: [
+            ['auctionId', 'ASC'],
+            ['amount', 'DESC'],
+            ['createdAt', 'ASC'],
+          ],
+          attributes: ['auctionId', 'bidderId', 'amount'],
+          raw: true,
+        })
+      : [];
+
+    const highestByAuction = new Map();
+    for (const bid of topBids) {
+      const auctionId = bid.auctionId ?? bid.auction_id;
+      if (!highestByAuction.has(auctionId)) {
+        highestByAuction.set(auctionId, bid);
+      }
     }
 
-    let sql = `
-      SELECT a.*, (
-        SELECT MAX(b.amount)
-        FROM bids b
-        WHERE b.auction_id = a.id
-      ) AS highest_bid
-      FROM auctions a
-    `;
-
-    if (conditions.length) {
-      sql += ` WHERE ${conditions.join(' AND ')}`;
-    }
-
-    sql += ' ORDER BY a.created_at DESC';
-
-    const [rows] = await pool.execute(sql, params);
-    const imagesMap = await fetchImagesMap(rows.map((row) => row.id));
-
-    res.json(rows.map((row) => mapListing(row, imagesMap.get(row.id), req.user.id)));
+    res.json(
+      rows.map((row) =>
+        mapListing(row, imagesMap.get(row.id) ?? [], req.user.id, {
+          highestBid: highestByAuction.get(row.id)?.amount ?? null,
+          highestBidderId:
+            highestByAuction.get(row.id)?.bidderId ??
+            highestByAuction.get(row.id)?.bidder_id ??
+            null,
+        }),
+      ),
+    );
   } catch (error) {
     console.error('Error fetching listings:', error);
     res.status(500).json({ message: 'Error al obtener las subastas.' });
@@ -236,32 +263,8 @@ router.get('/', auth, async (req, res) => {
 
 router.get('/:id', auth, async (req, res) => {
   const { id } = req.params;
-  const [[listing]] = await pool.execute(
-    `SELECT a.*,
-        (
-          SELECT MAX(b.amount)
-          FROM bids b
-          WHERE b.auction_id = a.id
-        ) AS highest_bid,
-        (
-          SELECT b2.bidder_id
-          FROM bids b2
-          WHERE b2.auction_id = a.id
-          ORDER BY b2.amount DESC, b2.created_at ASC
-          LIMIT 1
-        ) AS highest_bidder_id,
-        (
-          SELECT u.nombre
-          FROM bids b3
-          LEFT JOIN users u ON u.id = b3.bidder_id
-          WHERE b3.auction_id = a.id
-          ORDER BY b3.amount DESC, b3.created_at ASC
-          LIMIT 1
-        ) AS highest_bidder_name
-      FROM auctions a
-      WHERE a.id = ?`,
-    [id]
-  );
+  // ORM: obtenemos subasta y pujas mediante Sequelize.
+  const listing = await Auction.findByPk(id, { raw: true });
 
   if (!listing) {
     return res.status(404).json({ message: 'Subasta no encontrada' });
@@ -269,29 +272,43 @@ router.get('/:id', auth, async (req, res) => {
 
   const imagesMap = await fetchImagesMap([listing.id]);
 
-  const [bids] = await pool.execute(
-    `SELECT b.id, b.amount, b.created_at, b.bidder_id, u.nombre
-       FROM bids b
-       LEFT JOIN users u ON u.id = b.bidder_id
-       WHERE b.auction_id = ?
-       ORDER BY b.created_at DESC`,
-    [id]
-  );
+  const bids = await Bid.findAll({
+    where: { auctionId: id },
+    include: [{ model: User, as: 'bidder', attributes: ['id', 'nombre'] }],
+    order: [['createdAt', 'DESC']],
+  });
 
+  const bidsPlain = bids.map((bid) => bid.get({ plain: true }));
+
+  const highestBidRecord = await Bid.findOne({
+    where: { auctionId: id },
+    include: [{ model: User, as: 'bidder', attributes: ['id', 'nombre'] }],
+    order: [
+      ['amount', 'DESC'],
+      ['createdAt', 'ASC'],
+      ['id', 'ASC'],
+    ],
+  });
+
+  const topBidPlain = highestBidRecord?.get({ plain: true }) ?? null;
   const viewerId = req.user.id;
 
   res.json({
-    listing: mapListing(listing, imagesMap.get(listing.id), viewerId),
+    listing: mapListing(listing, imagesMap.get(listing.id) ?? [], viewerId, {
+      highestBid: topBidPlain?.amount ?? null,
+      highestBidderId:
+        topBidPlain?.bidderId ?? topBidPlain?.bidder_id ?? null,
+    }),
     viewer: {
       id: viewerId,
     },
-    bids: bids.map((bid) => ({
+    bids: bidsPlain.map((bid) => ({
       id: bid.id,
-      userId: bid.bidder_id,
-      bidderId: bid.bidder_id,
+      userId: bid.bidderId ?? bid.bidder_id,
+      bidderId: bid.bidderId ?? bid.bidder_id,
       amount: Number(bid.amount),
-      bidderName: bid.nombre ?? 'Usuario',
-      createdAt: bid.created_at,
+      bidderName: bid.bidder?.nombre ?? 'Usuario',
+      createdAt: bid.createdAt ?? bid.created_at,
     })),
   });
 });
@@ -354,48 +371,43 @@ router.post('/', auth, handleImageUpload, async (req, res) => {
 
   const relativeImagePaths = uploadedFiles.map((file) => `uploads/${file.filename}`);
 
-  const connection = await pool.getConnection();
+  let listingId;
   try {
-    await connection.beginTransaction();
-
-    const sql = `
-      INSERT INTO auctions (seller_id, title, brand, model, year, base_price, min_increment, description, status, ends_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)
-    `;
-
-    const params = [
-      req.user.id,
-      title,
-      brand,
-      model,
-      numericYear,
-      numericBasePrice,
-      numericMinIncrement,
-      description || '',
-      formatDate(closingDate),
-    ];
-
-    const [result] = await connection.execute(sql, params);
-    const listingId = result.insertId;
-
-    if (relativeImagePaths.length) {
-      const placeholders = relativeImagePaths.map(() => '(?, ?)').join(', ');
-      const imageParams = relativeImagePaths.flatMap((pathValue) => [listingId, pathValue]);
-      await connection.execute(
-        `INSERT INTO auction_images (auction_id, image_path) VALUES ${placeholders}`,
-        imageParams,
+    await sequelize.transaction(async (transaction) => {
+      // ORM: creación de subasta con Sequelize usando una transacción.
+      const createdAuction = await Auction.create(
+        {
+          sellerId: req.user.id,
+          title,
+          brand,
+          model,
+          year: numericYear,
+          basePrice: numericBasePrice,
+          minIncrement: numericMinIncrement,
+          description: description || '',
+          status: 'active',
+          endsAt: closingDate,
+        },
+        { transaction },
       );
-    }
 
-    await connection.commit();
+      listingId = createdAuction.id;
+
+      if (relativeImagePaths.length) {
+        const imagesPayload = relativeImagePaths.map((pathValue) => ({
+          auctionId: listingId,
+          imagePath: pathValue,
+        }));
+
+        await AuctionImage.bulkCreate(imagesPayload, { transaction });
+      }
+    });
+
     return res.status(201).json({ id: listingId, images: relativeImagePaths });
   } catch (error) {
-    await connection.rollback();
     cleanupFiles(uploadedFiles);
     console.error('Error creando subasta:', error);
     return res.status(500).json({ message: 'No se pudo publicar el vehiculo.' });
-  } finally {
-    connection.release();
   }
 });
 
@@ -407,84 +419,67 @@ router.post('/:id/bids', auth, async (req, res) => {
     return res.status(400).json({ message: 'Ingresa una oferta válida.' });
   }
 
-  const [[listing]] = await pool.execute(
-    'SELECT id, seller_id, status, base_price, ends_at FROM auctions WHERE id = ?',
-    [id]
-  );
+  // ORM: validación y creación de oferta mediante Sequelize.
+  const listingInstance = await Auction.findByPk(id);
 
-  if (!listing) {
+  if (!listingInstance) {
     return res.status(404).json({ message: 'Subasta no encontrada' });
   }
 
-  if (listing.seller_id === req.user.id) {
+  if (Number(listingInstance.sellerId) === Number(req.user.id)) {
     return res.status(400).json({ message: 'No puedes ofertar en tu propia subasta.' });
   }
 
   const now = new Date();
-  const closingDate = new Date(listing.ends_at);
-  if (listing.status !== 'active' || closingDate <= now) {
-    await pool.execute('UPDATE auctions SET status = ? WHERE id = ? AND status = "active"', ['ended', id]);
+  const closingDate = new Date(listingInstance.endsAt ?? listingInstance.ends_at);
+  if (listingInstance.status !== 'active' || closingDate <= now) {
+    if (listingInstance.status === 'active' && closingDate <= now) {
+      await listingInstance.update({ status: 'ended' });
+    }
     return res.status(400).json({ message: 'La subasta ya finalizó.' });
   }
 
-  const [[highest]] = await pool.execute(
-    'SELECT MAX(amount) AS max_amount FROM bids WHERE auction_id = ?',
-    [id]
+  const highest = await Bid.max('amount', { where: { auctionId: id } });
+  const minAmount = Math.max(
+    Number(listingInstance.basePrice ?? listingInstance.base_price ?? 0),
+    Number(highest ?? 0),
   );
-
-  const minAmount = Math.max(Number(listing.base_price), Number(highest?.max_amount ?? 0));
   if (amount <= minAmount) {
     return res.status(400).json({ message: `La oferta debe superar $${minAmount}.` });
   }
 
-  const [insertResult] = await pool.execute(
-    'INSERT INTO bids (auction_id, bidder_id, amount) VALUES (?, ?, ?)',
-    [id, req.user.id, amount]
-  );
+  const createdBid = await Bid.create({
+    auctionId: id,
+    bidderId: req.user.id,
+    amount,
+  });
 
-  const [[bidRow]] = await pool.execute(
-    `SELECT b.id, b.amount, b.created_at, b.bidder_id, u.nombre
-       FROM bids b
-       LEFT JOIN users u ON u.id = b.bidder_id
-       WHERE b.id = ?`,
-    [insertResult.insertId]
-  );
+  const bidWithUser = await Bid.findByPk(createdBid.id, {
+    include: [{ model: User, as: 'bidder', attributes: ['id', 'nombre'] }],
+  });
 
-  const [[summaryRow]] = await pool.execute(
-    `SELECT
-        a.id,
-        a.status,
-        a.ends_at,
-        a.base_price,
-        a.min_increment,
-        (
-          SELECT MAX(b.amount)
-          FROM bids b
-          WHERE b.auction_id = a.id
-        ) AS highest_bid,
-        (
-          SELECT b2.bidder_id
-          FROM bids b2
-          WHERE b2.auction_id = a.id
-          ORDER BY b2.amount DESC, b2.created_at ASC
-          LIMIT 1
-        ) AS highest_bidder_id,
-        (
-          SELECT u.nombre
-          FROM bids b3
-          LEFT JOIN users u ON u.id = b3.bidder_id
-          WHERE b3.auction_id = a.id
-          ORDER BY b3.amount DESC, b3.created_at ASC
-          LIMIT 1
-        ) AS highest_bidder_name
-      FROM auctions a
-      WHERE a.id = ?`,
-    [id]
-  );
+  const bidPlain = bidWithUser?.get({ plain: true }) ?? createdBid.get({ plain: true });
+  const createdAtValue = bidPlain.createdAt ?? bidPlain.created_at ?? new Date().toISOString();
+
+  const summaryRow = {
+    id: listingInstance.id,
+    status: listingInstance.status,
+    ends_at: listingInstance.endsAt ?? listingInstance.ends_at,
+    base_price: listingInstance.basePrice ?? listingInstance.base_price,
+    min_increment: listingInstance.minIncrement ?? listingInstance.min_increment,
+    highest_bid: amount,
+    highest_bidder_id: req.user.id,
+  };
 
   emitBidCreated({
     auctionId: id,
-    bidRow,
+    bidRow: {
+      id: bidPlain.id,
+      amount: bidPlain.amount,
+      created_at: createdAtValue,
+      bidder_id: bidPlain.bidderId ?? bidPlain.bidder_id,
+      nombre: bidPlain.bidder?.nombre,
+    },
     summaryRow,
   });
 
