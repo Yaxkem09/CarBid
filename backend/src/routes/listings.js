@@ -4,6 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { Op } from 'sequelize';
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { Auction, AuctionImage, Bid, User, sequelize } from '../db/orm.js';
 import { auth } from '../middleware/auth.js';
 import { emitBidCreated } from '../realtime/events.js';
@@ -14,7 +15,16 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const uploadsDir = path.join(__dirname, '..', '..', 'uploads');
 
-fs.mkdirSync(uploadsDir, { recursive: true });
+const s3Bucket = process.env.S3_BUCKET?.trim();
+const s3Region = (process.env.AWS_REGION ?? process.env.AWS_DEFAULT_REGION)?.trim();
+const rawS3PublicUrl = process.env.S3_PUBLIC_URL?.trim();
+const s3PublicBaseUrl = rawS3PublicUrl ? rawS3PublicUrl.replace(/\/$/, '') : null;
+const useS3Storage = Boolean(s3Bucket && s3Region);
+const s3Client = useS3Storage ? new S3Client({ region: s3Region }) : null;
+
+if (!useS3Storage) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
 
 const MAX_IMAGE_COUNT = 4;
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5 MB
@@ -24,22 +34,124 @@ const allowedMimeTypes = new Set([
   'image/webp',
   'image/gif',
   'image/jpg',
+  'image/pjpeg',
 ]);
 
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, uploadsDir),
-  filename: (_req, file, cb) => {
-    const ext = (path.extname(file.originalname) || '.jpg').toLowerCase();
-    const baseName = path
-      .basename(file.originalname, path.extname(file.originalname))
-      .toLowerCase()
-      .replace(/\s+/g, '-')
-      .replace(/[^a-z0-9-_]/g, '')
-      .slice(0, 40) || 'imagen';
+const allowedExtensions = new Set(['.jpeg', '.jpg', '.png', '.webp', '.gif']);
 
-    cb(null, `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${baseName}${ext}`);
-  },
-});
+const extensionToMimeType = new Map([
+  ['.jpeg', 'image/jpeg'],
+  ['.jpg', 'image/jpeg'],
+  ['.png', 'image/png'],
+  ['.webp', 'image/webp'],
+  ['.gif', 'image/gif'],
+]);
+
+const randomSuffix = () => Math.random().toString(36).slice(2, 8);
+
+const buildSafeBaseName = (originalName) => {
+  const baseName = path
+    .basename(originalName ?? 'imagen', path.extname(originalName ?? ''))
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-_]/g, '')
+    .slice(0, 40);
+
+  return baseName || 'imagen';
+};
+
+const generateSafeFileName = (originalName = 'imagen.jpg') => {
+  const ext = (path.extname(originalName) || '.jpg').toLowerCase();
+  const baseName = buildSafeBaseName(originalName);
+  return `${Date.now()}-${randomSuffix()}-${baseName}${ext}`;
+};
+
+const buildS3Key = (originalName) => `uploads/${generateSafeFileName(originalName)}`;
+
+const buildS3ObjectUrl = (bucket, region, key) => {
+  const encodedKey = key
+    .split('/')
+    .map((segment) => encodeURIComponent(segment))
+    .join('/');
+
+  if (s3PublicBaseUrl) {
+    return `${s3PublicBaseUrl}/${encodedKey}`;
+  }
+
+  return `https://${bucket}.s3.${region}.amazonaws.com/${encodedKey}`;
+};
+
+async function deleteS3Objects(keys) {
+  if (!useS3Storage || !Array.isArray(keys) || keys.length === 0) {
+    return;
+  }
+
+  const results = await Promise.allSettled(
+    keys.map((key) =>
+      s3Client.send(
+        new DeleteObjectCommand({
+          Bucket: s3Bucket,
+          Key: key,
+        }),
+      ),
+    ),
+  );
+
+  results.forEach((result, index) => {
+    if (result.status === 'rejected') {
+      console.warn(
+        `No se pudo eliminar objeto S3 ${keys[index]}:`,
+        result.reason?.message ?? result.reason,
+      );
+    }
+  });
+}
+
+async function uploadFilesToS3(files) {
+  if (!useS3Storage || !Array.isArray(files) || files.length === 0) {
+    return [];
+  }
+
+  const uploaded = [];
+
+  try {
+    for (const file of files) {
+      const key = buildS3Key(file.originalname ?? 'imagen.jpg');
+      const fallbackMime =
+        extensionToMimeType.get((file.originalname && path.extname(file.originalname).toLowerCase()) || '') ??
+        'application/octet-stream';
+      const normalizedMime = (file.mimetype ? file.mimetype.toLowerCase() : '') || fallbackMime;
+      const contentType = file.detectedMimeType ?? normalizedMime;
+      await s3Client.send(
+        new PutObjectCommand({
+          Bucket: s3Bucket,
+          Key: key,
+          Body: file.buffer,
+          ContentType: contentType,
+        }),
+      );
+      uploaded.push({
+        key,
+        url: buildS3ObjectUrl(s3Bucket, s3Region, key),
+      });
+    }
+    return uploaded;
+  } catch (error) {
+    if (uploaded.length) {
+      await deleteS3Objects(uploaded.map((item) => item.key));
+    }
+    throw error;
+  }
+}
+
+const storage = useS3Storage
+  ? multer.memoryStorage()
+  : multer.diskStorage({
+      destination: (_req, _file, cb) => cb(null, uploadsDir),
+      filename: (_req, file, cb) => {
+        cb(null, generateSafeFileName(file.originalname));
+      },
+    });
 
 const upload = multer({
   storage,
@@ -48,7 +160,14 @@ const upload = multer({
     files: MAX_IMAGE_COUNT,
   },
   fileFilter: (_req, file, cb) => {
-    if (allowedMimeTypes.has(file.mimetype)) {
+    const mimetype = (file.mimetype ?? '').toLowerCase();
+    const extension = (file.originalname && path.extname(file.originalname).toLowerCase()) || '';
+
+    const canonicalMimeType =
+      (mimetype && allowedMimeTypes.has(mimetype) && mimetype) || extensionToMimeType.get(extension);
+
+    if (canonicalMimeType) {
+      file.detectedMimeType = canonicalMimeType;
       cb(null, true);
     } else {
       const error = new Error('INVALID_IMAGE_TYPE');
@@ -90,8 +209,13 @@ function cleanupFiles(files) {
   }
 
   files.forEach((file) => {
+    const filePath = file?.path;
+    if (!filePath) {
+      return;
+    }
+
     try {
-      fs.unlinkSync(file.path);
+      fs.unlinkSync(filePath);
     } catch (error) {
       console.warn('No se pudo eliminar archivo temporal:', error.message);
     }
@@ -330,7 +454,9 @@ router.post('/', auth, handleImageUpload, async (req, res) => {
   };
 
   const rejectWithCleanup = (status, message) => {
-    cleanupFiles(uploadedFiles);
+    if (!useS3Storage) {
+      cleanupFiles(uploadedFiles);
+    }
     return res.status(status).json({ message });
   };
 
@@ -369,7 +495,19 @@ router.post('/', auth, handleImageUpload, async (req, res) => {
     return rejectWithCleanup(400, 'La fecha de cierre debe ser posterior al momento actual.');
   }
 
-  const relativeImagePaths = uploadedFiles.map((file) => `uploads/${file.filename}`);
+  let s3UploadResults = [];
+  if (useS3Storage && uploadedFiles.length) {
+    try {
+      s3UploadResults = await uploadFilesToS3(uploadedFiles);
+    } catch (error) {
+      console.error('Error subiendo imagenes a S3:', error);
+      return res.status(500).json({ message: 'No se pudieron subir las imagenes.' });
+    }
+  }
+
+  const imageLocations = useS3Storage
+    ? s3UploadResults.map((item) => item.url)
+    : uploadedFiles.map((file) => `uploads/${file.filename}`);
 
   let listingId;
   try {
@@ -393,8 +531,8 @@ router.post('/', auth, handleImageUpload, async (req, res) => {
 
       listingId = createdAuction.id;
 
-      if (relativeImagePaths.length) {
-        const imagesPayload = relativeImagePaths.map((pathValue) => ({
+      if (imageLocations.length) {
+        const imagesPayload = imageLocations.map((pathValue) => ({
           auctionId: listingId,
           imagePath: pathValue,
         }));
@@ -403,9 +541,13 @@ router.post('/', auth, handleImageUpload, async (req, res) => {
       }
     });
 
-    return res.status(201).json({ id: listingId, images: relativeImagePaths });
+    return res.status(201).json({ id: listingId, images: imageLocations });
   } catch (error) {
-    cleanupFiles(uploadedFiles);
+    if (useS3Storage && s3UploadResults.length) {
+      await deleteS3Objects(s3UploadResults.map((item) => item.key));
+    } else {
+      cleanupFiles(uploadedFiles);
+    }
     console.error('Error creando subasta:', error);
     return res.status(500).json({ message: 'No se pudo publicar el vehiculo.' });
   }
