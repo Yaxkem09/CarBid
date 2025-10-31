@@ -16,6 +16,7 @@ const initialState = {
 };
 
 const MAX_PHOTOS = 4;
+const allowedPhotoExtensions = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif']);
 
 const currencyFormatter = new Intl.NumberFormat('es-GT', {
   style: 'currency',
@@ -234,7 +235,13 @@ const PublicarCarro = () => {
 
     const accepted = [];
     Array.from(files).forEach((file) => {
-      if (!file.type.startsWith('image/')) {
+      const mime = file.type?.toLowerCase() ?? '';
+      const dotIndex = file.name?.lastIndexOf('.') ?? -1;
+      const extension = dotIndex >= 0 ? file.name.slice(dotIndex).toLowerCase() : '';
+      const isAllowedByMime = Boolean(mime) && mime.startsWith('image/');
+      const isAllowedByExtension = allowedPhotoExtensions.has(extension);
+
+      if (!isAllowedByMime && !isAllowedByExtension) {
         return;
       }
 
