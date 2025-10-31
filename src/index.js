@@ -21,22 +21,43 @@ try {
 }
 
 const app = express();
-app.use(express.json());
-app.use(cookieParser());
+
+/* 🧩 NUEVA CONFIGURACIÓN DE CORS — admite tanto carbid.click como www.carbid.click */
+const allowedOrigins = [
+  'https://carbid.click',
+  'https://www.carbid.click'
+];
+
 app.use(
   cors({
-    origin: process.env.FRONTEND_ORIGIN,
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
-  }),
+  })
 );
+
+// ✅ responder a solicitudes OPTIONS (preflight)
+app.options('*', cors());
+
+app.use(express.json());
+app.use(cookieParser());
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
+// ✅ ruta raíz
 app.get('/', (_req, res) => {
   res.send('Backend CarBid running');
 });
+
 app.get('/health', (_req, res) => res.send('ok'));
 
 app.get('/db-check', async (_req, res) => {
