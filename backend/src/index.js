@@ -34,6 +34,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
+app.get('/', (_req, res) => {
+  res.send('Backend CarBid running');
+});
+
 app.get('/health', (_req, res) => res.send('ok'));
 
 app.get('/db-check', async (_req, res) => {
