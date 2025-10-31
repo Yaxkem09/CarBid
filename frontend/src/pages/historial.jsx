@@ -150,10 +150,7 @@ const Historial = () => {
         <div className="historial-page__sections">
           <section className="historial-card">
             <h2>Mis subastas</h2>
-            <div
-              className="historial-table"
-              style={{ '--historial-columns': '2fr 1fr 1fr 1fr 120px' }}
-            >
+            <div className="historial-table">
               <div className="historial-table__header">
                 <span>Vehiculo</span>
                 <span>Mi oferta actual</span>
@@ -168,11 +165,11 @@ const Historial = () => {
 
               {participatingAuctions.map((bid) => (
                 <div className="historial-table__row" key={bid.listingId}>
-                  <span>{bid.listingTitle}</span>
-                  <span>{formatCurrency(bid.amount)}</span>
-                  <span>{getBidStatusLabel(bid)}</span>
-                  <span>{formatClosingDate(bid.listingEndsAt)}</span>
-                  <span>
+                  <span data-label="Vehiculo">{bid.listingTitle}</span>
+                  <span data-label="Mi oferta actual">{formatCurrency(bid.amount)}</span>
+                  <span data-label="Estado">{getBidStatusLabel(bid)}</span>
+                  <span data-label="Cierra">{formatClosingDate(bid.listingEndsAt)}</span>
+                  <span data-label="Acciones">
                     <button type="button" onClick={() => handleViewAuction(bid.listingId)}>
                       Ver
                     </button>
@@ -184,10 +181,7 @@ const Historial = () => {
 
           <section className="historial-card">
             <h2>Ganadas</h2>
-            <div
-              className="historial-table"
-              style={{ '--historial-columns': '2fr 1fr 1fr 120px' }}
-            >
+            <div className="historial-table">
               <div className="historial-table__header">
                 <span>Vehiculo</span>
                 <span>Oferta ganadora</span>
@@ -201,10 +195,10 @@ const Historial = () => {
 
               {wonAuctions.map((bid) => (
                 <div className="historial-table__row" key={bid.listingId}>
-                  <span>{bid.listingTitle}</span>
-                  <span>{formatCurrency(bid.amount)}</span>
-                  <span>{formatClosingDate(bid.listingEndsAt)}</span>
-                  <span>
+                  <span data-label="Vehiculo">{bid.listingTitle}</span>
+                  <span data-label="Oferta ganadora">{formatCurrency(bid.amount)}</span>
+                  <span data-label="Fecha cierre">{formatClosingDate(bid.listingEndsAt)}</span>
+                  <span data-label="Acciones">
                     <button type="button" onClick={() => handleViewAuction(bid.listingId)}>
                       Ver
                     </button>
@@ -216,10 +210,7 @@ const Historial = () => {
 
           <section className="historial-card">
             <h2>Mis publicaciones</h2>
-            <div
-              className="historial-table"
-              style={{ '--historial-columns': '2fr 1fr 1fr 1fr 120px' }}
-            >
+            <div className="historial-table">
               <div className="historial-table__header">
                 <span>Vehiculo</span>
                 <span>Estado</span>
@@ -234,11 +225,15 @@ const Historial = () => {
 
               {myListings.map((listing) => (
                 <div className="historial-table__row" key={listing.id}>
-                  <span>{listing.title}</span>
-                  <span>{getListingStatusLabel(listing)}</span>
-                  <span>{listing.status === 'active' ? formatClosingDate(listing.endsAt) : '-'}</span>
-                  <span>{formatCurrency(listing.highestBid ?? listing.basePrice)}</span>
-                  <span>
+                  <span data-label="Vehiculo">{listing.title}</span>
+                  <span data-label="Estado">{getListingStatusLabel(listing)}</span>
+                  <span data-label="Finaliza">
+                    {listing.status === 'active' ? formatClosingDate(listing.endsAt) : '-'}
+                  </span>
+                  <span data-label="Ofertas">
+                    {formatCurrency(listing.highestBid ?? listing.basePrice)}
+                  </span>
+                  <span data-label="Acciones">
                     <button type="button" onClick={() => handleViewAuction(listing.id)}>
                       Ver
                     </button>

@@ -1,20 +1,56 @@
+:root {
+  --app-max-width: min(100%, 80rem);
+  --app-container-inline: clamp(0.75rem, 2vw, 1.5rem);
+  --app-container-block: clamp(1.75rem, 4vw, 3.5rem);
+  --app-section-gap: clamp(1.5rem, 4vw, 3rem);
+  --app-card-radius: 1rem;
+  --app-shadow-soft: 0 1.1rem 2.5rem rgba(15, 23, 42, 0.08);
+  --app-shadow-hover: 0 1.6rem 3.25rem rgba(15, 23, 42, 0.14);
+}
+
 body {
   margin: 0;
   font-family: 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans',
     'Droid Sans', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: #f1f5f9;
+  font-size: clamp(1rem, 0.45vw + 0.95rem, 1.125rem);
+  line-height: 1.6;
+  background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 40%, #e0e7ff 100%);
   color: #0f172a;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+  height: auto;
 }
 
 .app-layout {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #f8fafc;
+  background: transparent;
 }
 
 .app-content {
   flex: 1;
+  width: 100%;
+  max-width: var(--app-max-width);
+  margin: 0 auto;
+  padding: var(--app-container-block) var(--app-container-inline)
+    calc(var(--app-container-block) + clamp(1rem, 2vw, 1.75rem));
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-section-gap);
+}
+
+.app-content > * {
+  width: 100%;
+}
+
+@media (min-width: 80rem) {
+  .app-content {
+    padding-inline: clamp(2rem, 4vw, 3rem);
+  }
 }
