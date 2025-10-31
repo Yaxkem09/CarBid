@@ -1,5 +1,6 @@
 import cron from 'node-cron';
-import { pool } from '../db/pool.js';
+import { Op } from 'sequelize';
+import { Auction, Bid, sequelize } from '../db/orm.js';
 import { emitAuctionEnded } from '../realtime/events.js';
 
 /**
@@ -7,83 +8,84 @@ import { emitAuctionEnded } from '../realtime/events.js';
  */
 export const startAuctionStatusJob = () => {
   cron.schedule('* * * * *', async () => {
-    const connection = await pool.getConnection();
-
     try {
-      await connection.beginTransaction();
+      const summaries = await sequelize.transaction(async (transaction) => {
+        // ORM: cierre automático de subastas usando Sequelize.
+        const expiredAuctions = await Auction.findAll({
+          where: {
+            status: 'active',
+            endsAt: { [Op.lt]: new Date() },
+          },
+          attributes: ['id', 'endsAt', 'basePrice', 'minIncrement'],
+          lock: transaction.LOCK.UPDATE,
+          transaction,
+        });
 
-      const [expiredRows] = await connection.query(`
-        SELECT id
-        FROM auctions
-        WHERE status = 'active' AND ends_at < NOW()
-        FOR UPDATE
-      `);
+        if (!expiredAuctions.length) {
+          return [];
+        }
 
-      if (!expiredRows.length) {
-        await connection.commit();
+        const expiredPlain = expiredAuctions.map((auction) => auction.get({ plain: true }));
+        const auctionIds = expiredPlain.map((auction) => auction.id);
+
+        await Auction.update(
+          { status: 'ended' },
+          {
+            where: { id: auctionIds },
+            transaction,
+          },
+        );
+
+        const topBids = await Bid.findAll({
+          where: { auctionId: auctionIds },
+          attributes: ['auctionId', 'bidderId', 'amount'],
+          order: [
+            ['auctionId', 'ASC'],
+            ['amount', 'DESC'],
+            ['createdAt', 'ASC'],
+          ],
+          transaction,
+          raw: true,
+        });
+
+        const highestByAuction = new Map();
+        for (const bid of topBids) {
+          const auctionId = bid.auctionId ?? bid.auction_id;
+          if (!highestByAuction.has(auctionId)) {
+            highestByAuction.set(auctionId, bid);
+          }
+        }
+
+        return expiredPlain.map((auction) => {
+          const highest = highestByAuction.get(auction.id);
+          return {
+            id: auction.id,
+            status: 'ended',
+            ends_at: auction.endsAt ?? auction.ends_at,
+            base_price: auction.basePrice ?? auction.base_price,
+            min_increment: auction.minIncrement ?? auction.min_increment,
+            highest_bid: highest ? highest.amount : null,
+            highest_bidder_id: highest
+              ? highest.bidderId ?? highest.bidder_id
+              : null,
+          };
+        });
+      });
+
+      if (!summaries.length) {
         return;
       }
-
-      const auctionIds = expiredRows.map((row) => row.id);
-      const placeholders = auctionIds.map(() => '?').join(', ');
-
-      await connection.query(
-        `UPDATE auctions
-         SET status = 'ended'
-         WHERE id IN (${placeholders})`,
-        auctionIds,
-      );
-
-      const [summaries] = await connection.query(
-        `SELECT
-            a.id,
-            a.status,
-            a.ends_at,
-            a.base_price,
-            a.min_increment,
-            (
-              SELECT MAX(b.amount)
-              FROM bids b
-              WHERE b.auction_id = a.id
-            ) AS highest_bid,
-            (
-              SELECT b2.bidder_id
-              FROM bids b2
-              WHERE b2.auction_id = a.id
-              ORDER BY b2.amount DESC, b2.created_at ASC
-              LIMIT 1
-            ) AS highest_bidder_id,
-            (
-              SELECT u.nombre
-              FROM bids b3
-              LEFT JOIN users u ON u.id = b3.bidder_id
-              WHERE b3.auction_id = a.id
-              ORDER BY b3.amount DESC, b3.created_at ASC
-              LIMIT 1
-            ) AS highest_bidder_name
-         FROM auctions a
-         WHERE a.id IN (${placeholders})`,
-        auctionIds,
-      );
-
-      await connection.commit();
 
       summaries.forEach((summary) => {
         emitAuctionEnded({
           auctionId: summary.id,
-          summaryRow: {
-            ...summary,
-            status: 'ended',
-          },
+          summaryRow: summary,
         });
       });
 
-      console.log(`Finalizadas automaticamente ${auctionIds.length} subastas.`);
+      console.log(`Finalizadas automaticamente ${summaries.length} subastas.`);
     } catch (error) {
-      await connection.rollback();
       console.error('Error al actualizar subastas:', error);
-    } finally {
-      connection.release();
     }
   });
 };
