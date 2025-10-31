@@ -1,14 +1,13 @@
 .historial-page {
-  padding: clamp(12px, 2vw, 24px);
   display: grid;
-  gap: clamp(24px, 3vw, 40px);
+  gap: clamp(1.5rem, 4vw, 2.75rem);
   background: transparent;
-  min-height: 100%;
+  width: 100%;
 }
 
 .historial-page h1 {
   margin: 0;
-  font-size: clamp(2.1rem, 3vw, 2.7rem);
+  font-size: clamp(2rem, 3vw, 2.6rem);
   font-weight: 700;
   color: #0f172a;
   letter-spacing: -0.015em;
@@ -17,30 +16,30 @@
 .historial-page__error {
   color: #dc2626;
   font-weight: 600;
-  padding: 14px 18px;
+  padding: clamp(0.75rem, 2.5vw, 1rem);
   background-color: #fee2e2;
-  border-radius: 14px;
-  max-width: 720px;
-  box-shadow: 0 10px 20px rgba(220, 38, 38, 0.12);
+  border-radius: 0.875rem;
+  max-width: 45rem;
+  box-shadow: 0 0.75rem 1.5rem rgba(220, 38, 38, 0.12);
 }
 
 .historial-page__sections {
   display: grid;
-  gap: clamp(28px, 3.4vw, 44px);
+  gap: clamp(1.75rem, 4vw, 2.75rem);
 }
 
 .historial-card {
   display: grid;
-  gap: clamp(18px, 2.8vw, 28px);
+  gap: clamp(1.25rem, 3vw, 2rem);
   background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
   border-radius: var(--app-card-radius);
-  padding: clamp(22px, 3vw, 32px);
-  border: 1px solid #d1d9e6;
+  padding: clamp(1.5rem, 4vw, 2.5rem);
+  border: 0.0625rem solid #d1d9e6;
   box-shadow: var(--app-shadow-soft);
 }
 
 .historial-card h2 {
-  font-size: clamp(1.5rem, 2.2vw, 2rem);
+  font-size: clamp(1.4rem, 2.5vw, 1.9rem);
   font-weight: 600;
   color: #0f172a;
   margin: 0;
@@ -48,8 +47,8 @@
 }
 
 .historial-table {
-  border: 1px solid #d1d9e6;
-  border-radius: 18px;
+  border: 0.0625rem solid #d1d9e6;
+  border-radius: 1.125rem;
   background-color: #ffffff;
   box-shadow: var(--app-shadow-soft);
   overflow: hidden;
@@ -58,11 +57,10 @@
 .historial-table__header,
 .historial-table__row {
   display: grid;
-  grid-template-columns: var(--historial-columns, 2fr 1fr 1fr 1fr 160px);
-  gap: 18px;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: clamp(0.75rem, 3vw, 1.5rem);
   align-items: center;
-  padding: 18px clamp(18px, 3vw, 28px);
-  min-width: 760px;
+  padding: clamp(0.875rem, 3vw, 1.25rem) clamp(1.25rem, 4vw, 1.75rem);
 }
 
 .historial-table__header {
@@ -70,14 +68,25 @@
   font-weight: 700;
   color: #312e81;
   text-transform: uppercase;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   letter-spacing: 0.08em;
+}
+
+.historial-table__header span,
+.historial-table__row span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.historial-table__header span {
+  justify-content: flex-start;
 }
 
 .historial-table__row {
   color: #0f172a;
   font-size: 1rem;
-  border-top: 1px solid #e5e7eb;
+  border-top: 0.0625rem solid #e5e7eb;
   transition: background 0.25s ease;
 }
 
@@ -89,26 +98,17 @@
   background: rgba(226, 232, 240, 0.6);
 }
 
-.historial-table__row span,
-.historial-table__header span {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.historial-table__row span:not(:first-child),
-.historial-table__header span:not(:first-child) {
+.historial-table__row span:not(:first-child) {
   justify-content: center;
   text-align: center;
 }
 
-.historial-table__row span:last-child,
-.historial-table__header span:last-child {
+.historial-table__row span:last-child {
   justify-content: flex-end;
 }
 
 .historial-table__empty {
-  padding: 28px;
+  padding: clamp(1.5rem, 4vw, 2rem);
   text-align: center;
   color: #6b7280;
   font-size: 1rem;
@@ -118,8 +118,8 @@
   background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
   color: #ffffff;
   border: none;
-  border-radius: 999px;
-  padding: 10px 20px;
+  border-radius: 999rem;
+  padding: 0.625rem 1.25rem;
   font-weight: 600;
   font-size: 0.95rem;
   cursor: pointer;
@@ -129,30 +129,64 @@
 .historial-table button:hover,
 .historial-table button:focus-visible {
   background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 12px 24px rgba(217, 119, 6, 0.28);
+  transform: translateY(-0.125rem);
+  box-shadow: 0 0.75rem 1.5rem rgba(217, 119, 6, 0.28);
 }
 
 .historial-table button:active {
-  transform: translateY(1px);
+  transform: translateY(0.0625rem);
 }
 
-@media (max-width: 960px) {
+@media (max-width: 64rem) {
   .historial-table__header,
   .historial-table__row {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    min-width: 100%;
-    gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  }
+}
+
+@media (max-width: 48rem) {
+  /* Turn rows into cards and surface labels via data attributes */
+  .historial-table__header {
+    display: none;
   }
 
-  .historial-table__header span,
+  .historial-table {
+    border-radius: 1.25rem;
+  }
+
+  .historial-table__row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.75rem;
+    border-radius: 1rem;
+    border: none;
+    background: linear-gradient(180deg, #f8fafc 0%, #eff6ff 100%);
+    margin: 0 clamp(0.25rem, 3vw, 0.75rem);
+  }
+
+  .historial-table__row + .historial-table__row {
+    margin-top: clamp(0.75rem, 3vw, 1.25rem);
+  }
+
   .historial-table__row span {
-    justify-content: flex-start;
+    justify-content: space-between;
     text-align: left;
   }
 
-  .historial-table__row span:last-child,
-  .historial-table__header span:last-child {
-    justify-content: flex-start;
+  .historial-table__row span::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: #475569;
+    padding-right: 1rem;
+  }
+}
+
+@media (max-width: 40rem) {
+  .historial-card {
+    padding: clamp(1.25rem, 6vw, 1.75rem);
+  }
+
+  .historial-table button {
+    width: 100%;
+    justify-content: center;
   }
 }

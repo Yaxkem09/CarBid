@@ -1,8 +1,8 @@
 .detalle-subasta {
   display: grid;
-  grid-template-columns: minmax(360px, 1.05fr) minmax(0, 1fr);
-  gap: clamp(24px, 3vw, 40px);
-  padding: clamp(12px, 2vw, 24px);
+  grid-template-columns: minmax(clamp(18rem, 32vw, 24rem), 1fr) minmax(0, 1.4fr);
+  gap: clamp(1.5rem, 3vw, 2.5rem);
+  padding: clamp(0.75rem, 2vw, 1.5rem);
   align-items: start;
 }
 
@@ -10,19 +10,19 @@
 .detalle-subasta__bids {
   background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
   border-radius: var(--app-card-radius);
-  padding: clamp(22px, 3vw, 32px);
+  padding: clamp(1.375rem, 3vw, 2rem);
   box-shadow: var(--app-shadow-soft);
   display: flex;
   flex-direction: column;
-  gap: clamp(12px, 2vw, 20px);
-  border: 1px solid #d1d9e6;
+  gap: clamp(0.75rem, 2vw, 1.25rem);
+  border: 0.0625rem solid #d1d9e6;
 }
 
 .detalle-subasta__header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: clamp(12px, 2vw, 20px);
+  gap: clamp(0.75rem, 2vw, 1.25rem);
   flex-wrap: wrap;
 }
 
@@ -36,9 +36,9 @@
 .detalle-subasta__badge {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  border-radius: 999px;
-  padding: 6px 14px;
+  gap: 0.5rem;
+  border-radius: 999rem;
+  padding: 0.375rem 0.875rem;
   font-size: 1rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -48,8 +48,8 @@
 .detalle-subasta__badge::before {
   content: '';
   display: block;
-  width: 10px;
-  height: 10px;
+  width: 0.625rem;
+  height: 0.625rem;
   border-radius: 50%;
   background: currentColor;
 }
@@ -68,12 +68,12 @@
 .detalle-subasta__timer {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 0.375rem;
   background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(129, 140, 248, 0.2));
-  border-radius: 14px;
-  padding: 14px 18px;
-  border: 1px solid rgba(99, 102, 241, 0.18);
-  box-shadow: 0 12px 24px rgba(79, 70, 229, 0.12);
+  border-radius: 0.875rem;
+  padding: 0.875rem 1.125rem;
+  border: 0.0625rem solid rgba(99, 102, 241, 0.18);
+  box-shadow: 0 0.75rem 1.5rem rgba(79, 70, 229, 0.12);
 }
 
 .detalle-subasta__timer-label {
@@ -93,19 +93,18 @@
 .detalle-subasta__gallery {
   display: flex;
   flex-direction: column;
-  gap: clamp(12px, 2vw, 20px);
+  gap: clamp(0.75rem, 2vw, 1.25rem);
 }
 
 .detalle-subasta__gallery-main {
-  border-radius: calc(var(--app-card-radius) - 4px);
+  border-radius: calc(var(--app-card-radius) - 0.25rem);
   overflow: hidden;
   background: #0f172a;
   aspect-ratio: 16 / 9;
-  min-height: 320px;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.2);
+  box-shadow: 0 1.125rem 2.25rem rgba(15, 23, 42, 0.2);
 }
 
 .detalle-subasta__gallery-main img {
@@ -121,20 +120,24 @@
 
 .detalle-subasta__gallery-thumbs {
   display: flex;
-  gap: 12px;
+  gap: 0.75rem;
   flex-wrap: wrap;
 }
 
 .detalle-subasta__thumb {
-  border: 2px solid transparent;
-  border-radius: 12px;
+  border: 0.125rem solid transparent;
+  border-radius: 0.75rem;
   overflow: hidden;
   padding: 0;
   background: transparent;
   cursor: pointer;
-  width: 92px;
+  width: clamp(4.75rem, 18vw, 5.75rem);
   aspect-ratio: 4 / 3;
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  font-weight: 600;
   transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
 }
 
@@ -146,37 +149,37 @@
 
 .detalle-subasta__thumb--active {
   border-color: #4c51bf;
-  box-shadow: 0 0 0 3px rgba(76, 81, 191, 0.25);
+  box-shadow: 0 0 0 0.1875rem rgba(76, 81, 191, 0.25);
 }
 
 .detalle-subasta__thumb:hover {
-  transform: translateY(-3px);
+  transform: translateY(-0.1875rem);
 }
 
 .detalle-subasta__gallery-placeholder {
-  border-radius: 12px;
+  border-radius: 0.75rem;
   background: #f8fafc;
   color: #64748b;
   text-align: center;
-  padding: 40px 16px;
+  padding: 2.5rem 1rem;
   font-weight: 500;
 }
 
 .detalle-subasta__stats {
   display: grid;
-  gap: 12px;
-  margin-bottom: 12px;
-  padding: 16px 18px;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  padding: 1rem 1.125rem;
   background: rgba(226, 232, 240, 0.45);
-  border-radius: 16px;
-  border: 1px solid #dce3f2;
+  border-radius: 1rem;
+  border: 0.0625rem solid #dce3f2;
 }
 
 .detalle-subasta__stats p {
   margin: 0;
   display: flex;
   justify-content: space-between;
-  gap: 8px;
+  gap: 0.5rem;
   flex-wrap: wrap;
   font-size: 1.05rem;
   color: #0f172a;
@@ -195,8 +198,8 @@
 
 .detalle-subasta__description {
   margin: 0;
-  padding: 16px 18px;
-  border-radius: 16px;
+  padding: 1rem 1.125rem;
+  border-radius: 1rem;
   background: rgba(148, 163, 184, 0.12);
   color: #1e293b;
   font-size: clamp(1.02rem, 1.4vw, 1.15rem);
@@ -208,23 +211,23 @@
   font-size: 1rem;
   color: #1e293b;
   background: rgba(96, 165, 250, 0.16);
-  padding: 10px 14px;
-  border-radius: 12px;
+  padding: 0.625rem 0.875rem;
+  border-radius: 0.75rem;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 0.375rem;
 }
 
 .detalle-subasta__form {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 0.75rem;
 }
 
 .detalle-subasta__form input {
-  padding: 12px 14px;
-  border-radius: 12px;
-  border: 1px solid #c6d0e6;
+  padding: 0.75rem 0.875rem;
+  border-radius: 0.75rem;
+  border: 0.0625rem solid #c6d0e6;
   font-size: 1rem;
   transition: border-color 0.25s ease, box-shadow 0.25s ease;
 }
@@ -232,7 +235,7 @@
 .detalle-subasta__form input:focus {
   outline: none;
   border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+  box-shadow: 0 0 0 0.1875rem rgba(37, 99, 235, 0.18);
 }
 
 .detalle-subasta__form button {
@@ -240,8 +243,8 @@
   background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
   color: #fff;
   border: none;
-  padding: 12px 20px;
-  border-radius: 999px;
+  padding: 0.75rem 1.25rem;
+  border-radius: 999rem;
   cursor: pointer;
   font-weight: 600;
   transition: background 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
@@ -256,22 +259,22 @@
 .detalle-subasta__form button:not(:disabled):hover,
 .detalle-subasta__form button:not(:disabled):focus-visible {
   background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 16px 30px rgba(34, 197, 94, 0.28);
+  transform: translateY(-0.125rem);
+  box-shadow: 0 1rem 1.875rem rgba(34, 197, 94, 0.28);
 }
 
 .detalle-subasta__quick-buttons {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 0.625rem;
 }
 
 .detalle-subasta__quick-buttons button {
   background: rgba(14, 165, 233, 0.18);
   color: #0369a1;
   border: none;
-  padding: 8px 16px;
-  border-radius: 999px;
+  padding: 0.5rem 1rem;
+  border-radius: 999rem;
   font-weight: 600;
   cursor: pointer;
   transition: background 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease;
@@ -279,8 +282,8 @@
 
 .detalle-subasta__quick-buttons button:hover:not(:disabled) {
   background: rgba(14, 165, 233, 0.28);
-  transform: translateY(-2px);
-  box-shadow: 0 10px 20px rgba(14, 165, 233, 0.25);
+  transform: translateY(-0.125rem);
+  box-shadow: 0 0.625rem 1.25rem rgba(14, 165, 233, 0.25);
 }
 
 .detalle-subasta__quick-buttons button:disabled {
@@ -296,26 +299,26 @@
   justify-content: space-between;
   align-items: center;
   background: linear-gradient(135deg, rgba(219, 234, 254, 0.7), rgba(191, 219, 254, 0.9));
-  border-radius: 14px;
-  padding: 12px 18px;
+  border-radius: 0.875rem;
+  padding: 0.75rem 1.125rem;
   font-weight: 600;
   color: #0f172a;
-  border: 1px solid rgba(96, 165, 250, 0.4);
+  border: 0.0625rem solid rgba(96, 165, 250, 0.4);
 }
 
 .detalle-subasta__error {
   color: #dc2626;
   font-weight: 600;
   background: #fee2e2;
-  padding: 12px 16px;
-  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
 }
 
 .detalle-subasta__ended-note {
   background: #fef2f2;
   color: #991b1b;
-  padding: 12px 16px;
-  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
   font-weight: 500;
 }
 
@@ -325,7 +328,7 @@
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 0.625rem;
 }
 
 .detalle-subasta__bid {
@@ -333,15 +336,15 @@
   justify-content: space-between;
   align-items: center;
   background: #f8fafc;
-  border-radius: 12px;
-  padding: 12px 18px;
-  border: 1px solid rgba(226, 232, 240, 0.7);
+  border-radius: 0.75rem;
+  padding: 0.75rem 1.125rem;
+  border: 0.0625rem solid rgba(226, 232, 240, 0.7);
   transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
 }
 
 .detalle-subasta__bid:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.12);
+  transform: translateY(-0.1875rem);
+  box-shadow: 0 0.625rem 1.25rem rgba(15, 23, 42, 0.12);
   border-color: rgba(99, 102, 241, 0.25);
 }
 
@@ -350,9 +353,9 @@
 }
 
 .detalle-subasta__bid--leading {
-  border: 2px solid rgba(79, 70, 229, 0.7);
+  border: 0.125rem solid rgba(79, 70, 229, 0.7);
   background: rgba(224, 231, 255, 0.55);
-  box-shadow: 0 12px 28px rgba(79, 70, 229, 0.25);
+  box-shadow: 0 0.75rem 1.75rem rgba(79, 70, 229, 0.25);
 }
 
 .detalle-subasta__bid-status {
@@ -363,7 +366,7 @@
 }
 
 .detalle-subasta__state {
-  padding: clamp(24px, 4vw, 48px);
+  padding: clamp(1.5rem, 4vw, 3rem);
   text-align: center;
   font-size: 1.1rem;
   color: #334155;
@@ -372,22 +375,24 @@
 .detalle-subasta__state--error {
   color: #dc2626;
   background: #fee2e2;
-  border-radius: 16px;
+  border-radius: 1rem;
   display: inline-block;
   margin: 0 auto;
-  padding: 16px 24px;
+  padding: 1rem 1.5rem;
 }
 
-@media (max-width: 1080px) {
+@media (max-width: 64rem) {
+  /* Collapse to a single column so gallery sits above bid panel */
   .detalle-subasta {
     grid-template-columns: minmax(0, 1fr);
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 48rem) {
   .detalle-subasta__header {
     flex-direction: column;
     align-items: flex-start;
+    gap: clamp(0.75rem, 4vw, 1.25rem);
   }
 
   .detalle-subasta__timer {
@@ -399,14 +404,61 @@
   }
 }
 
+@media (max-width: 40rem) {
+  .detalle-subasta__info,
+  .detalle-subasta__bids {
+    padding: clamp(1rem, 6vw, 1.5rem);
+  }
+}
+
 @keyframes detalle-subasta-pulse {
   0% {
     box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.4);
   }
   70% {
-    box-shadow: 0 0 0 12px rgba(248, 113, 113, 0);
+    box-shadow: 0 0 0 0.75rem rgba(248, 113, 113, 0);
   }
   100% {
     box-shadow: 0 0 0 0 rgba(248, 113, 113, 0);
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

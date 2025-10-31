@@ -1,10 +1,11 @@
 :root {
-  --app-max-width: min(98vw, 1500px);
-  --app-shell-padding-x: clamp(18px, 4vw, 56px);
-  --app-shell-padding-y: clamp(24px, 4vw, 56px);
-  --app-card-radius: 16px;
-  --app-shadow-soft: 0 18px 40px rgba(15, 23, 42, 0.08);
-  --app-shadow-hover: 0 24px 52px rgba(15, 23, 42, 0.14);
+  --app-max-width: min(100%, 80rem);
+  --app-container-inline: clamp(0.75rem, 2vw, 1.5rem);
+  --app-container-block: clamp(1.75rem, 4vw, 3.5rem);
+  --app-section-gap: clamp(1.5rem, 4vw, 3rem);
+  --app-card-radius: 1rem;
+  --app-shadow-soft: 0 1.1rem 2.5rem rgba(15, 23, 42, 0.08);
+  --app-shadow-hover: 0 1.6rem 3.25rem rgba(15, 23, 42, 0.14);
 }
 
 body {
@@ -13,10 +14,16 @@ body {
     'Droid Sans', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-size: clamp(16px, 0.45vw + 15px, 18px);
+  font-size: clamp(1rem, 0.45vw + 0.95rem, 1.125rem);
   line-height: 1.6;
   background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 40%, #e0e7ff 100%);
   color: #0f172a;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+  height: auto;
 }
 
 .app-layout {
@@ -31,13 +38,19 @@ body {
   width: 100%;
   max-width: var(--app-max-width);
   margin: 0 auto;
-  padding: var(--app-shell-padding-y) var(--app-shell-padding-x)
-    calc(var(--app-shell-padding-y) + 24px);
+  padding: var(--app-container-block) var(--app-container-inline)
+    calc(var(--app-container-block) + clamp(1rem, 2vw, 1.75rem));
   display: flex;
   flex-direction: column;
-  gap: clamp(24px, 4vw, 48px);
+  gap: var(--app-section-gap);
 }
 
 .app-content > * {
   width: 100%;
+}
+
+@media (min-width: 80rem) {
+  .app-content {
+    padding-inline: clamp(2rem, 4vw, 3rem);
+  }
 }
