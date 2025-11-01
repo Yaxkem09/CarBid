@@ -371,7 +371,7 @@ const PublicarCarro = () => {
     try {
       setLoading(true);
       setError('');
-      const response = await api.post('/listings', formPayload);
+      const response = await api.post('/api/listings', formPayload);
       setFormData(initialState);
       updatePhotos([]);
       setPhotoError('');

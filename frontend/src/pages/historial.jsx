@@ -35,7 +35,7 @@ const Historial = () => {
     let alive = true;
     setLoading(true);
 
-    Promise.all([api.get('/listings', { params: { mine: 1 } }), api.get('/bids/mine')])
+    Promise.all([api.get('/api/listings', { params: { mine: 1 } }), api.get('/api/bids/mine')])
       .then(([listingsResponse, bidsResponse]) => {
         if (!alive) {
           return;

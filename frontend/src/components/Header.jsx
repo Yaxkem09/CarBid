@@ -145,7 +145,7 @@ export default function Header() {
 
     const loadUser = async () => {
       try {
-        const response = await api.get('/auth/me');
+        const response = await api.get('/api/auth/me');
         if (!alive) {
           return;
         }
@@ -176,7 +176,7 @@ export default function Header() {
 
       setNotificationsLoading(true);
       try {
-        const response = await api.get('/bids/mine');
+        const response = await api.get('/api/bids/mine');
         if (!alive) return;
 
         const items = createNotificationsFromBids(response.data ?? []);
@@ -247,7 +247,7 @@ export default function Header() {
 
   const handleLogout = async () => {
     try {
-      await api.post('/auth/logout');
+      await api.post('/api/auth/logout');
     } finally {
       navigate('/', { replace: true });
     }
