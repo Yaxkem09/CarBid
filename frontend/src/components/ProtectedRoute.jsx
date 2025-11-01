@@ -8,7 +8,7 @@ export default function ProtectedRoute({ children }) {
 
   useEffect(() => {
     let alive = true;
-    api.get('/auth/me')
+    api.get('/api/auth/me')
       .then(() => alive && setStatus('ok'))
       .catch(() => alive && setStatus('no'));
     return () => { alive = false; };

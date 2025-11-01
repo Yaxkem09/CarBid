@@ -53,7 +53,7 @@ const Bienvenida = () => {
     try {
       setError('');
       setLoading(true);
-      await api.post('/auth/login', loginData);
+      await api.post('/api/auth/login', loginData);
       navigate('/inicio', { replace: true });
     } catch (err) {
       setError(err.response?.data?.message || 'Error al iniciar sesión');
@@ -76,7 +76,7 @@ const Bienvenida = () => {
     try {
       setError('');
       setLoading(true);
-      await api.post('/auth/register', registerData);
+      await api.post('/api/auth/register', registerData);
       navigate('/inicio', { replace: true });
     } catch (err) {
       setError(err.response?.data?.message || 'Error al registrarse');

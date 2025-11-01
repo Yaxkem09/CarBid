@@ -101,7 +101,7 @@ const DetalleSubasta = () => {
         if (!silent) {
           setLoading(true);
         }
-        const response = await api.get(`/listings/${id}`);
+        const response = await api.get(`/api/listings/${id}`);
         const listingData = response.data.listing ?? null;
         const viewer = response.data.viewer?.id;
         const viewerString = viewer !== undefined && viewer !== null ? String(viewer) : null;
@@ -376,7 +376,7 @@ const DetalleSubasta = () => {
 
     try {
       setBidLoading(true);
-      await api.post(`/listings/${id}/bids`, { amount });
+      await api.post(`/api/listings/${id}/bids`, { amount });
       setExtraAmount(String(Math.max(listing.minIncrement ?? 1, 1)));
       await loadDetails({ silent: true });
     } catch (err) {

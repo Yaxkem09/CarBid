@@ -131,8 +131,8 @@ const Inicio = () => {
     setLoading(true);
 
     Promise.all([
-      api.get('/listings', { params: { status: 'active' } }),
-      api.get('/listings', { params: { status: 'active', sort: 'highestBid' } }),
+      api.get('/api/listings', { params: { status: 'active' } }),
+      api.get('/api/listings', { params: { status: 'active', sort: 'highestBid' } }),
     ])
       .then(([activeResponse, recommendedResponse]) => {
         if (!alive) return;
@@ -243,7 +243,7 @@ const Inicio = () => {
     }
 
     api
-      .get('/listings', { params })
+      .get('/api/listings', { params })
       .then((response) => {
         setSearchResults(response.data ?? []);
       })
