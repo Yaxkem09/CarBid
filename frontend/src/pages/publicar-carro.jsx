@@ -280,17 +280,18 @@ const PublicarCarro = () => {
       return false;
     }
 
-    let added = false;
-    updatePhotos((prev) => {
-      const availableSlots = Math.max(0, MAX_PHOTOS - prev.length);
-      if (!availableSlots) {
-        return prev;
-      }
-      const next = [...prev, ...accepted.slice(0, availableSlots)];
-      added = next.length > prev.length;
-      return next;
-    });
-    return added;
+    const availableSlots = Math.max(0, MAX_PHOTOS - photosRef.current.length);
+    if (!availableSlots) {
+      return false;
+    }
+
+    const nextPhotos = accepted.slice(0, availableSlots);
+    if (!nextPhotos.length) {
+      return false;
+    }
+
+    updatePhotos((prev) => [...prev, ...nextPhotos]);
+    return true;
   };
 
   const handlePhotoInputChange = (event) => {
