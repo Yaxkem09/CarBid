@@ -4,12 +4,22 @@ import api from '../services/api';
 import { connectSocket } from '../services/socket';
 import './detalle-subasta.css';
 
+const quetzalFormatter = new Intl.NumberFormat('es-GT', {
+  style: 'currency',
+  currency: 'GTQ',
+  maximumFractionDigits: 0,
+});
+
 const formatCurrency = (value) => {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) {
-    return '$0';
+    return 'Q0';
   }
-  return `$${numeric.toLocaleString()}`;
+  try {
+    return quetzalFormatter.format(numeric);
+  } catch (_error) {
+    return `Q${numeric.toLocaleString('es-GT')}`;
+  }
 };
 
 const formatDateTime = (value) => {
@@ -431,6 +441,12 @@ const DetalleSubasta = () => {
   const currentImageSrc = hasImages
     ? resolveImageSrc(listing.images[activeImageIndex])
     : '';
+  const vehicleDescriptorParts = [
+    [listing.brand, listing.model].filter(Boolean).join(' ').trim(),
+    listing.year,
+    listing.color,
+  ].filter(Boolean);
+  const vehicleDescriptor = vehicleDescriptorParts.join(' · ');
 
   return (
     <div className="detalle-subasta">
@@ -446,9 +462,7 @@ const DetalleSubasta = () => {
           </span>
         </div>
 
-        <p className="detalle-subasta__meta">
-          {listing.brand} {listing.model} | {listing.year}
-        </p>
+        <p className="detalle-subasta__meta">{vehicleDescriptor || listing.title}</p>
 
         <div className="detalle-subasta__timer">
           <span className="detalle-subasta__timer-label">Tiempo restante</span>

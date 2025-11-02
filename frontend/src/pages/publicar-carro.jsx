@@ -1,13 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
-import { vehicleBrands, vehicleModels, vehicleYears } from '../constants/vehicleOptions';
+import { vehicleBrands, vehicleModels, vehicleColors, vehicleYears } from '../constants/vehicleOptions';
 import './publicar-carro.css';
 
 const initialState = {
   title: '',
   brand: '',
   model: '',
+  color: '',
   year: '',
   basePrice: '',
   minIncrement: '',
@@ -101,7 +102,7 @@ function PhotoGrid({ images = [], onRemove }) {
 }
 
 function PreviewCard({ data, photos = [] }) {
-  const { title, brand, model, year, basePrice, minIncrement, endsAt, description } = data;
+  const { title, brand, model, color, year, basePrice, minIncrement, endsAt, description } = data;
 
   const price = formatCurrency(basePrice) || 'Q0.00';
   const increment = formatCurrency(minIncrement) || 'Q0.00';
@@ -127,6 +128,7 @@ function PreviewCard({ data, photos = [] }) {
           {model || 'Modelo'}{' '}
           {year ? ` - ${year}` : '- Año'}
         </p>
+        <p className="publish-car__preview-meta">Color: <strong>{color || 'Color'}</strong></p>
         <p className="publish-car__preview-meta">Precio base: <strong>{price}</strong></p>
         <p className="publish-car__preview-meta">Incremento minimo: <strong>{increment}</strong></p>
         <p className="publish-car__preview-meta">Cierre: {endsAtText}</p>
@@ -142,13 +144,17 @@ function PreviewCard({ data, photos = [] }) {
 }
 
 const getValidationError = (data) => {
-  const { title, brand, model, year, basePrice, minIncrement, endsAt } = data;
+  const { title, brand, model, color, year, basePrice, minIncrement, endsAt } = data;
 
   if (!title.trim()) {
     return 'Agrega un titulo descriptivo para la subasta.';
   }
-  if (!brand.trim() || !model.trim()) {
-    return 'Completa la marca y el modelo del vehiculo.';
+  const normalizedColor = color.trim();
+  if (!brand.trim() || !model.trim() || !normalizedColor) {
+    return 'Completa la marca, el modelo y el color del vehiculo.';
+  }
+  if (normalizedColor.length > 80) {
+    return 'El color debe tener maximo 80 caracteres.';
   }
   const yearNumber = Number(year);
   const currentYearLimit = new Date().getFullYear() + 1;
@@ -197,6 +203,11 @@ const PublicarCarro = () => {
     [],
   );
 
+  const sortedColors = useMemo(
+    () => [...vehicleColors].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' })),
+    [],
+  );
+
   const brandSelectValue = useMemo(
     () => (vehicleBrands.includes(formData.brand) ? formData.brand : ''),
     [formData.brand],
@@ -205,6 +216,11 @@ const PublicarCarro = () => {
   const modelSelectValue = useMemo(
     () => (vehicleModels.includes(formData.model) ? formData.model : ''),
     [formData.model],
+  );
+
+  const colorSelectValue = useMemo(
+    () => (vehicleColors.includes(formData.color) ? formData.color : ''),
+    [formData.color],
   );
 
   const yearSelectValue = useMemo(() => {
@@ -357,6 +373,7 @@ const PublicarCarro = () => {
     const sanitizedTitle = formData.title.trim();
     const sanitizedBrand = formData.brand.trim();
     const sanitizedModel = formData.model.trim();
+    const sanitizedColor = formData.color.trim();
     const sanitizedDescription = formData.description.trim();
     const sanitizedEndsAt = formData.endsAt;
     const sanitizedYear = Number(formData.year);
@@ -367,6 +384,7 @@ const PublicarCarro = () => {
     formPayload.append('title', sanitizedTitle);
     formPayload.append('brand', sanitizedBrand);
     formPayload.append('model', sanitizedModel);
+    formPayload.append('color', sanitizedColor);
     formPayload.append('year', String(sanitizedYear));
     formPayload.append('basePrice', String(sanitizedBasePrice));
     formPayload.append('minIncrement', String(sanitizedMinIncrement));
@@ -468,6 +486,31 @@ const PublicarCarro = () => {
                     value={formData.model}
                     onChange={handleChange}
                     placeholder="O escribe un modelo personalizado"
+                    className="publish-car__input publish-car__input--secondary"
+                  />
+                </Field>
+                <Field label="Color">
+                  <div className="publish-car__select-wrapper">
+                    <select
+                      name="color"
+                      value={colorSelectValue}
+                      onChange={handleChange}
+                      className="publish-car__select"
+                    >
+                      <option value="">Selecciona un color</option>
+                      {sortedColors.map((colorOption) => (
+                        <option key={colorOption} value={colorOption}>
+                          {colorOption}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <input
+                    type="text"
+                    name="color"
+                    value={formData.color}
+                    onChange={handleChange}
+                    placeholder="O describe otro color"
                     className="publish-car__input publish-car__input--secondary"
                   />
                 </Field>

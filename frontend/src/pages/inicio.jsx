@@ -1,7 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
-import { vehicleBrands, vehicleModels, vehicleYears, priceRange } from '../constants/vehicleOptions';
+import {
+  vehicleBrands,
+  vehicleModels,
+  vehicleColors,
+  vehicleYears,
+  priceRange,
+} from '../constants/vehicleOptions';
 import { connectSocket } from '../services/socket';
 import './inicio.css';
 
@@ -13,6 +19,7 @@ const Inicio = () => {
   const [filters, setFilters] = useState({
     brand: '',
     model: '',
+    color: '',
     year: '',
     minPrice: priceRange.min,
     maxPrice: priceRange.max,
@@ -26,9 +33,9 @@ const Inicio = () => {
 
   const currencyFormatter = useMemo(
     () =>
-      new Intl.NumberFormat('es-CO', {
+      new Intl.NumberFormat('es-GT', {
         style: 'currency',
-        currency: 'COP',
+        currency: 'GTQ',
         maximumFractionDigits: 0,
       }),
     [],
@@ -41,6 +48,11 @@ const Inicio = () => {
 
   const sortedModels = useMemo(
     () => [...vehicleModels].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' })),
+    [],
+  );
+
+  const sortedColors = useMemo(
+    () => [...vehicleColors].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' })),
     [],
   );
 
@@ -238,12 +250,14 @@ const Inicio = () => {
     const params = { status: 'active' };
     const brandValue = filters.brand.trim();
     const modelValue = filters.model.trim();
+    const colorValue = filters.color.trim();
     const yearValue = Number.parseInt(filters.year, 10);
     const minPriceValue = Number(filters.minPrice);
     const maxPriceValue = Number(filters.maxPrice);
 
     if (brandValue) params.brand = brandValue.toLowerCase();
     if (modelValue) params.model = modelValue.toLowerCase();
+    if (colorValue) params.color = colorValue.toLowerCase();
     if (!Number.isNaN(yearValue)) params.year = yearValue;
     if (Number.isFinite(minPriceValue) && minPriceValue > priceRange.min) {
       params.minPrice = minPriceValue;
@@ -276,7 +290,7 @@ const Inicio = () => {
         {error ? (
           <p className="inicio-recommended__message">{error}</p>
         ) : loading ? (
-          <p className="inicio-recommended__message">Cargando recomendaciones…</p>
+          <p className="inicio-recommended__message">Cargando recomendaciones...</p>
         ) : recommended.length ? (
           <div className="inicio-recommended__list">
             {recommended.map((listing) => {
@@ -285,6 +299,7 @@ const Inicio = () => {
               const descriptorParts = [
                 [listing.brand, listing.model].filter(Boolean).join(' ').trim(),
                 listing.year,
+                listing.color,
               ].filter(Boolean);
               const descriptor = descriptorParts.join(' · ');
               const imageSrc = buildImageUrl(listing.images?.[0]);
@@ -358,6 +373,24 @@ const Inicio = () => {
               </div>
             </label>
             <label className="inicio-page__field">
+              <span>Color</span>
+              <div className="inicio-select-wrapper">
+                <select
+                  name="color"
+                  value={filters.color}
+                  onChange={handleFilterChange}
+                  className="inicio-select"
+                >
+                  <option value="">Cualquier color</option>
+                  {sortedColors.map((colorOption) => (
+                    <option key={colorOption} value={colorOption}>
+                      {colorOption}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </label>
+            <label className="inicio-page__field">
               <span>Año</span>
               <div className="inicio-select-wrapper">
                 <select
@@ -412,7 +445,7 @@ const Inicio = () => {
             </fieldset>
 
             <button type="submit" className="inicio-page__submit" disabled={searching}>
-              {searching ? 'Buscando…' : 'Aplicar filtros'}
+              {searching ? 'Buscando...' : 'Aplicar filtros'}
             </button>
 
             {searchError && <p className="inicio-page__error">{searchError}</p>}
@@ -424,7 +457,7 @@ const Inicio = () => {
 
           <div className="inicio-page__section">
             <h2>Resultados de búsqueda</h2>
-            {searching && <p>Buscando subastas…</p>}
+            {searching && <p>Buscando subastas...</p>}
             {!searching && searchError && <p className="inicio-page__error">{searchError}</p>}
             {!searching && searchPerformed && searchResults.length === 0 && !searchError && (
               <p>No encontramos subastas que coincidan con tu búsqueda.</p>
@@ -434,6 +467,12 @@ const Inicio = () => {
                 {searchResults.map((listing) => {
                   const imageSrc = buildImageUrl(listing.images?.[0]);
                   const listingLabel = [listing.brand, listing.model].filter(Boolean).join(' ') || listing.title;
+                  const descriptorParts = [
+                    [listing.brand, listing.model].filter(Boolean).join(' ').trim(),
+                    listing.year,
+                    listing.color,
+                  ].filter(Boolean);
+                  const descriptor = descriptorParts.join(' · ');
 
                   return (
                     <article key={listing.id} className="inicio-card">
@@ -445,7 +484,7 @@ const Inicio = () => {
                         )}
                       </div>
                       <h3>{listing.title}</h3>
-                      <p>{[listing.brand, listing.model].filter(Boolean).join(' ')} · {listing.year}</p>
+                      <p>{descriptor || listingLabel}</p>
                       <p>Precio base: {currencyFormatter.format(listing.basePrice)}</p>
                       <p>Oferta más alta: {currencyFormatter.format(listing.highestBid ?? listing.basePrice)}</p>
                       <button type="button" onClick={() => handleViewDetails(listing.id)}>
@@ -465,3 +504,6 @@ const Inicio = () => {
 };
 
 export default Inicio;
+
+
+
