@@ -25,7 +25,8 @@ const app = express();
 /* 🧩 CONFIGURACIÓN DE CORS — admite carbid.click y www.carbid.click */
 const allowedOrigins = [
   'https://carbid.click',
-  'https://www.carbid.click'
+  'https://www.carbid.click',
+  'http://localhost:3000',
 ];
 
 const corsOptions = {
