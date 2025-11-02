@@ -187,6 +187,16 @@ const PublicarCarro = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  const sortedBrands = useMemo(
+    () => [...vehicleBrands].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' })),
+    [],
+  );
+
+  const sortedModels = useMemo(
+    () => [...vehicleModels].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' })),
+    [],
+  );
+
   const brandSelectValue = useMemo(
     () => (vehicleBrands.includes(formData.brand) ? formData.brand : ''),
     [formData.brand],
@@ -419,7 +429,7 @@ const PublicarCarro = () => {
                     className="publish-car__select"
                   >
                     <option value="">Selecciona una marca</option>
-                    {vehicleBrands.map((brand) => (
+                    {sortedBrands.map((brand) => (
                       <option key={brand} value={brand}>
                         {brand}
                       </option>
@@ -442,7 +452,7 @@ const PublicarCarro = () => {
                     className="publish-car__select"
                   >
                     <option value="">Selecciona un modelo</option>
-                    {vehicleModels.map((modelName) => (
+                    {sortedModels.map((modelName) => (
                       <option key={modelName} value={modelName}>
                         {modelName}
                       </option>

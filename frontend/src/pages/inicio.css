@@ -228,6 +228,52 @@
   cursor: pointer;
 }
 
+.inicio-select {
+  -webkit-appearance: none;
+  appearance: none;
+  --inicio-select-bg: linear-gradient(135deg, rgba(224, 231, 255, 0.92) 0%, #ffffff 70%);
+  background-color: transparent;
+  background-image: var(--inicio-select-bg),
+    url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 20 20' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M5 7l5 6 5-6' stroke='%231e40af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat, no-repeat;
+  background-position: center, right 0.75rem center;
+  background-size: 100% 100%, 0.75rem 0.75rem;
+  border: 0.046875rem solid rgba(99, 102, 241, 0.45);
+  border-radius: 0.65625rem;
+  padding: 0.5625rem 2.0625rem 0.5625rem 0.75rem;
+  font-size: 0.7375rem;
+  font-weight: 600;
+  color: #0f172a;
+  box-shadow: 0 0.75rem 1.5rem rgba(79, 70, 229, 0.15);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
+}
+
+.inicio-select:hover {
+  --inicio-select-bg: linear-gradient(135deg, rgba(199, 210, 254, 0.94) 0%, #ffffff 72%);
+  border-color: rgba(37, 99, 235, 0.82);
+  box-shadow: 0 1rem 2rem rgba(37, 99, 235, 0.18);
+}
+
+.inicio-select:focus,
+.inicio-select:focus-visible {
+  outline: none;
+  --inicio-select-bg: linear-gradient(135deg, rgba(191, 219, 254, 0.95) 0%, #ffffff 75%);
+  border-color: #2563eb;
+  box-shadow: 0 0 0 0.15625rem rgba(37, 99, 235, 0.32), 0 1rem 2rem rgba(37, 99, 235, 0.2);
+}
+
+.inicio-select:disabled {
+  cursor: not-allowed;
+  --inicio-select-bg: linear-gradient(135deg, #f1f5f9 0%, #f8fafc 100%);
+  color: #94a3b8;
+  border-color: #e2e8f0;
+  box-shadow: none;
+}
+
+.inicio-select::-ms-expand {
+  display: none;
+}
+
 .inicio-page__range {
   border: 0.046875rem solid #c6d0e6;
   border-radius: var(--app-card-radius);

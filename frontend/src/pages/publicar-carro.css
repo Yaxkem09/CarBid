@@ -194,12 +194,42 @@
 .publish-car__select {
   -webkit-appearance: none;
   appearance: none;
+  --pc-select-bg: linear-gradient(135deg, rgba(125, 211, 252, 0.3) 0%, rgba(255, 255, 255, 0.98) 70%);
+  background-color: transparent;
   background-image:
-    url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 20 20' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M5 7l5 5 5-5' stroke='%2362748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 0.5625rem center;
-  background-size: 0.75rem 0.75rem;
-  padding-right: 1.875rem; /* espacio para flecha */
+    var(--pc-select-bg),
+    url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 20 20' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M5 7l5 6 5-6' stroke='%230369a1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat, no-repeat;
+  background-position: center, right 0.75rem center;
+  background-size: 100% 100%, 0.75rem 0.75rem;
+  border: 0.046875rem solid rgba(14, 165, 233, 0.45);
+  box-shadow: 0 0.875rem 1.75rem rgba(14, 165, 233, 0.15);
+  padding-right: 2.0625rem;
+  transition: border-color .25s ease, box-shadow .25s ease, background .25s ease, transform .25s ease;
+}
+
+.publish-car__select:hover {
+  --pc-select-bg: linear-gradient(135deg, rgba(56, 189, 248, 0.35) 0%, rgba(255, 255, 255, 0.98) 75%);
+  border-color: rgba(2, 132, 199, 0.65);
+  box-shadow: 0 1.125rem 2.25rem rgba(14, 165, 233, 0.2);
+}
+
+.publish-car__select:focus,
+.publish-car__select:focus-visible {
+  --pc-select-bg: linear-gradient(135deg, rgba(14, 165, 233, 0.35) 0%, rgba(255, 255, 255, 0.98) 80%);
+  border-color: var(--pc-accent);
+  box-shadow: 0 0 0 0.15625rem rgba(14, 165, 233, 0.28), 0 1.125rem 2.25rem rgba(14, 165, 233, 0.24);
+}
+
+.publish-car__select:disabled {
+  --pc-select-bg: linear-gradient(135deg, #e2e8f0 0%, #f8fafc 100%);
+  border-color: rgba(148, 163, 184, 0.6);
+  box-shadow: none;
+  color: var(--pc-text-500);
+}
+
+.publish-car__select::-ms-expand {
+  display: none;
 }
 
 /* Control secundario (inputs debajo del select) */

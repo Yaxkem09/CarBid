@@ -34,6 +34,16 @@ const Inicio = () => {
     [],
   );
 
+  const sortedBrands = useMemo(
+    () => [...vehicleBrands].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' })),
+    [],
+  );
+
+  const sortedModels = useMemo(
+    () => [...vehicleModels].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' })),
+    [],
+  );
+
   const assetBaseUrl = useMemo(() => {
     const base = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
     return base.replace(/\/api\/?$/, '');
@@ -232,8 +242,8 @@ const Inicio = () => {
     const minPriceValue = Number(filters.minPrice);
     const maxPriceValue = Number(filters.maxPrice);
 
-    if (brandValue) params.brand = brandValue;
-    if (modelValue) params.model = modelValue;
+    if (brandValue) params.brand = brandValue.toLowerCase();
+    if (modelValue) params.model = modelValue.toLowerCase();
     if (!Number.isNaN(yearValue)) params.year = yearValue;
     if (Number.isFinite(minPriceValue) && minPriceValue > priceRange.min) {
       params.minPrice = minPriceValue;
@@ -313,9 +323,14 @@ const Inicio = () => {
           <form onSubmit={handleFilterSubmit} className="inicio-page__form">
             <label className="inicio-page__field">
               <span>Marca</span>
-              <select name="brand" value={filters.brand} onChange={handleFilterChange}>
+              <select
+                name="brand"
+                value={filters.brand}
+                onChange={handleFilterChange}
+                className="inicio-select"
+              >
                 <option value="">Todas las marcas</option>
-                {vehicleBrands.map((brand) => (
+                {sortedBrands.map((brand) => (
                   <option key={brand} value={brand}>
                     {brand}
                   </option>
@@ -324,9 +339,14 @@ const Inicio = () => {
             </label>
             <label className="inicio-page__field">
               <span>Modelo</span>
-              <select name="model" value={filters.model} onChange={handleFilterChange}>
+              <select
+                name="model"
+                value={filters.model}
+                onChange={handleFilterChange}
+                className="inicio-select"
+              >
                 <option value="">Todos los modelos</option>
-                {vehicleModels.map((model) => (
+                {sortedModels.map((model) => (
                   <option key={model} value={model}>
                     {model}
                   </option>
@@ -335,7 +355,12 @@ const Inicio = () => {
             </label>
             <label className="inicio-page__field">
               <span>Año</span>
-              <select name="year" value={filters.year} onChange={handleFilterChange}>
+              <select
+                name="year"
+                value={filters.year}
+                onChange={handleFilterChange}
+                className="inicio-select"
+              >
                 <option value="">Cualquier año</option>
                 {vehicleYears.map((yearOption) => (
                   <option key={yearOption} value={String(yearOption)}>

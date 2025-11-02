@@ -317,12 +317,25 @@ router.get('/', auth, async (req, res) => {
       where.status = status;
     }
 
+    const andConditions = [];
+
     if (brand) {
-      where.brand = brand;
+      andConditions.push(
+        sequelize.where(sequelize.fn('LOWER', sequelize.col('brand')), brand.toLowerCase()),
+      );
     }
 
     if (model) {
-      where.model = model;
+      andConditions.push(
+        sequelize.where(sequelize.fn('LOWER', sequelize.col('model')), model.toLowerCase()),
+      );
+    }
+
+    if (andConditions.length) {
+      if (!where[Op.and]) {
+        where[Op.and] = [];
+      }
+      where[Op.and].push(...andConditions);
     }
 
     if (Number.isInteger(year)) {
