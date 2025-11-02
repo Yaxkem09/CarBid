@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import logo1 from '../assets/logo1.png';
 import './Header.css';
 
 const LINKS = [
@@ -118,6 +119,7 @@ function createNotificationsFromBids(bids = [], now = new Date()) {
 
 export default function Header() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [userName, setUserName] = useState('Usuario');
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
@@ -125,6 +127,9 @@ export default function Header() {
   const [notifications, setNotifications] = useState([]);
   const notificationsWrapperRef = useRef(null);
   const notificationsPanelId = 'app-header-notifications-panel';
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef(null);
+  const userMenuPanelId = 'app-header-user-menu';
 
   const dateTimeFormatter = useMemo(
     () =>
@@ -134,11 +139,6 @@ export default function Header() {
       }),
     [],
   );
-
-  const userInitial = useMemo(() => {
-    const trimmed = userName.trim();
-    return trimmed ? trimmed.charAt(0).toUpperCase() : 'U';
-  }, [userName]);
 
   useEffect(() => {
     let alive = true;
@@ -232,7 +232,34 @@ export default function Header() {
     };
   }, [notificationsOpen]);
 
+  useEffect(() => {
+    if (!userMenuOpen) {
+      return undefined;
+    }
+
+    const handleClickOutside = (event) => {
+      if (!userMenuRef.current) return;
+      if (userMenuRef.current.contains(event.target)) return;
+      setUserMenuOpen(false);
+    };
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setUserMenuOpen(false);
+      }
+    };
+
+    window.addEventListener('mousedown', handleClickOutside);
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [userMenuOpen]);
+
   const handleToggleNotifications = () => {
+    setUserMenuOpen(false);
     setNotificationsOpen((prev) => !prev);
   };
 
@@ -243,12 +270,45 @@ export default function Header() {
     }
   };
 
-  const hasNotifications = notifications.length > 0;
+  const notificationCount = notifications.length;
+  const hasNotifications = notificationCount > 0;
+  const notificationsButtonLabel = hasNotifications
+    ? `Ver ${notificationCount === 1 ? '1 notificacion' : `${notificationCount} notificaciones`}`
+    : 'Ver notificaciones';
+
+  const resolveLinkParts = (to) => {
+    if (typeof to === 'string') {
+      const [path = '/', hash = ''] = to.split('#');
+      return {
+        pathname: path || '/',
+        hash: hash ? `#${hash}` : '',
+      };
+    }
+
+    return {
+      pathname: to?.pathname ?? '/',
+      hash: to?.hash ?? '',
+    };
+  };
+
+  const getLinkClassName = (link) => ({ isActive }) => {
+    const { pathname: linkPath, hash: linkHash } = resolveLinkParts(link.to);
+    const isPathMatch = location.pathname === linkPath;
+    const isHashMatch = !linkHash || location.hash === linkHash;
+    const active = isActive || (isPathMatch && isHashMatch);
+    return `app-header__link${active ? ' app-header__link--active' : ''}`;
+  };
+
+  const handleToggleUserMenu = () => {
+    setNotificationsOpen(false);
+    setUserMenuOpen((prev) => !prev);
+  };
 
   const handleLogout = async () => {
     try {
       await api.post('/api/auth/logout');
     } finally {
+      setUserMenuOpen(false);
       navigate('/', { replace: true });
     }
   };
@@ -256,15 +316,15 @@ export default function Header() {
   return (
     <header className="app-header">
       <div className="app-header__inner">
-        <div className="app-header__brand">CarBid</div>
+        <div className="app-header__brand">
+          <img src={logo1} alt="CarBid" />
+        </div>
         <nav className="app-header__nav">
           {LINKS.map((link) => (
             <NavLink
               key={link.to}
               to={link.to}
-              className={({ isActive }) =>
-                `app-header__link${isActive ? ' app-header__link--active' : ''}`
-              }
+              className={getLinkClassName(link)}
             >
               {link.label}
             </NavLink>
@@ -275,7 +335,7 @@ export default function Header() {
             <button
               type="button"
               className="app-header__notifications"
-              aria-label="Ver notificaciones"
+              aria-label={notificationsButtonLabel}
               aria-expanded={notificationsOpen}
               aria-controls={notificationsPanelId}
               onClick={handleToggleNotifications}
@@ -304,7 +364,11 @@ export default function Header() {
                   strokeLinecap="round"
                 />
               </svg>
-              {hasNotifications && <span className="app-header__notifications-badge" aria-hidden="true" />}
+              {hasNotifications && (
+                <span className="app-header__notifications-badge">
+                  {notificationCount > 99 ? '99+' : notificationCount}
+                </span>
+              )}
             </button>
             {notificationsOpen && (
               <div
@@ -357,15 +421,43 @@ export default function Header() {
               </div>
             )}
           </div>
-          <div className="app-header__user">
-            <div className="app-header__avatar" aria-hidden="true">
-              {userInitial}
-            </div>
-            <div className="app-header__user-meta">
+          <div className="app-header__user" ref={userMenuRef}>
+            <button
+              type="button"
+              className={`app-header__user-toggle${userMenuOpen ? ' app-header__user-toggle--open' : ''}`}
+              onClick={handleToggleUserMenu}
+              aria-haspopup="menu"
+              aria-expanded={userMenuOpen}
+              aria-controls={userMenuPanelId}
+            >
               <span className="app-header__user-name">{userName}</span>
+              <svg
+                className="app-header__user-arrow"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+              >
+                <path
+                  d="M6 9l6 6 6-6"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+            <div
+              id={userMenuPanelId}
+              className={`app-header__user-menu${userMenuOpen ? ' app-header__user-menu--open' : ''}`}
+              role="menu"
+            >
               <button
                 type="button"
-                className="app-header__logout"
+                className="app-header__user-menu-item"
+                role="menuitem"
                 onClick={handleLogout}
               >
                 Cerrar sesion
