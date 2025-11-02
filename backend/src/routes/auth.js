@@ -39,6 +39,22 @@ function setAuthCookie(res, payload) {
   res.cookie('token', token, buildCookieOptions({ includeMaxAge: true }));
 }
 
+// GET /api/auth/check-email
+router.get('/check-email', async (req, res) => {
+  const email = req.query.email?.toString().trim();
+  if (!email) {
+    return res.status(400).json({ message: 'Email requerido' });
+  }
+
+  try {
+    const existingUser = await User.findOne({ where: { email } });
+    res.json({ exists: Boolean(existingUser) });
+  } catch (err) {
+    console.error('Error checking email uniqueness', err);
+    res.status(500).json({ message: 'Error al verificar correo' });
+  }
+});
+
 // POST /api/auth/register
 router.post('/register', async (req, res) => {
   const { nombre, apellidos, genero, telefono, email, password } = req.body ?? {};
