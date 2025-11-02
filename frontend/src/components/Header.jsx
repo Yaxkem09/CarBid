@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import logo1 from '../assets/logo1.png';
 import './Header.css';
@@ -150,7 +150,10 @@ export default function Header() {
           return;
         }
         const user = response.data?.user ?? {};
-        const fullName = [user.nombre, user.apellidos].filter(Boolean).join(' ').trim();
+        const lastName = Array.isArray(user.apellidos)
+          ? user.apellidos[0]
+          : (user.apellidos || '').split(' ').filter(Boolean)[0];
+        const fullName = [user.nombre, lastName].filter(Boolean).join(' ').trim();
         const fallback = user.nombre || user.email || 'Usuario';
         setUserName(fullName || fallback);
       } catch (error) {
@@ -316,9 +319,9 @@ export default function Header() {
   return (
     <header className="app-header">
       <div className="app-header__inner">
-        <div className="app-header__brand">
+        <Link to="/inicio" className="app-header__brand" aria-label="Ir a inicio">
           <img src={logo1} alt="CarBid" />
-        </div>
+        </Link>
         <nav className="app-header__nav">
           {LINKS.map((link) => (
             <NavLink
