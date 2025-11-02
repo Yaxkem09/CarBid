@@ -323,51 +323,57 @@ const Inicio = () => {
           <form onSubmit={handleFilterSubmit} className="inicio-page__form">
             <label className="inicio-page__field">
               <span>Marca</span>
-              <select
-                name="brand"
-                value={filters.brand}
-                onChange={handleFilterChange}
-                className="inicio-select"
-              >
-                <option value="">Todas las marcas</option>
-                {sortedBrands.map((brand) => (
-                  <option key={brand} value={brand}>
-                    {brand}
-                  </option>
-                ))}
-              </select>
+              <div className="inicio-select-wrapper">
+                <select
+                  name="brand"
+                  value={filters.brand}
+                  onChange={handleFilterChange}
+                  className="inicio-select"
+                >
+                  <option value="">Todas las marcas</option>
+                  {sortedBrands.map((brand) => (
+                    <option key={brand} value={brand}>
+                      {brand}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </label>
             <label className="inicio-page__field">
               <span>Modelo</span>
-              <select
-                name="model"
-                value={filters.model}
-                onChange={handleFilterChange}
-                className="inicio-select"
-              >
-                <option value="">Todos los modelos</option>
-                {sortedModels.map((model) => (
-                  <option key={model} value={model}>
-                    {model}
-                  </option>
-                ))}
-              </select>
+              <div className="inicio-select-wrapper">
+                <select
+                  name="model"
+                  value={filters.model}
+                  onChange={handleFilterChange}
+                  className="inicio-select"
+                >
+                  <option value="">Todos los modelos</option>
+                  {sortedModels.map((model) => (
+                    <option key={model} value={model}>
+                      {model}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </label>
             <label className="inicio-page__field">
               <span>Año</span>
-              <select
-                name="year"
-                value={filters.year}
-                onChange={handleFilterChange}
-                className="inicio-select"
-              >
-                <option value="">Cualquier año</option>
-                {vehicleYears.map((yearOption) => (
-                  <option key={yearOption} value={String(yearOption)}>
-                    {yearOption}
-                  </option>
-                ))}
-              </select>
+              <div className="inicio-select-wrapper">
+                <select
+                  name="year"
+                  value={filters.year}
+                  onChange={handleFilterChange}
+                  className="inicio-select"
+                >
+                  <option value="">Cualquier año</option>
+                  {vehicleYears.map((yearOption) => (
+                    <option key={yearOption} value={String(yearOption)}>
+                      {yearOption}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </label>
             <fieldset className="inicio-page__field inicio-page__range">
               <legend>Rango de precio</legend>

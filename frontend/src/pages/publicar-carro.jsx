@@ -422,19 +422,21 @@ const PublicarCarro = () => {
               </Field>
               <div className="publish-car__grid publish-car__grid--three">
                 <Field label="Marca">
-                  <select
-                    name="brand"
-                    value={brandSelectValue}
-                    onChange={handleChange}
-                    className="publish-car__select"
-                  >
-                    <option value="">Selecciona una marca</option>
-                    {sortedBrands.map((brand) => (
-                      <option key={brand} value={brand}>
-                        {brand}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="publish-car__select-wrapper">
+                    <select
+                      name="brand"
+                      value={brandSelectValue}
+                      onChange={handleChange}
+                      className="publish-car__select"
+                    >
+                      <option value="">Selecciona una marca</option>
+                      {sortedBrands.map((brand) => (
+                        <option key={brand} value={brand}>
+                          {brand}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                   <input
                     type="text"
                     name="brand"
@@ -445,19 +447,21 @@ const PublicarCarro = () => {
                   />
                 </Field>
                 <Field label="Modelo">
-                  <select
-                    name="model"
-                    value={modelSelectValue}
-                    onChange={handleChange}
-                    className="publish-car__select"
-                  >
-                    <option value="">Selecciona un modelo</option>
-                    {sortedModels.map((modelName) => (
-                      <option key={modelName} value={modelName}>
-                        {modelName}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="publish-car__select-wrapper">
+                    <select
+                      name="model"
+                      value={modelSelectValue}
+                      onChange={handleChange}
+                      className="publish-car__select"
+                    >
+                      <option value="">Selecciona un modelo</option>
+                      {sortedModels.map((modelName) => (
+                        <option key={modelName} value={modelName}>
+                          {modelName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                   <input
                     type="text"
                     name="model"
@@ -468,19 +472,21 @@ const PublicarCarro = () => {
                   />
                 </Field>
                 <Field label="Año">
-                  <select
-                    name="year"
-                    value={yearSelectValue}
-                    onChange={handleChange}
-                    className="publish-car__select"
-                  >
-                    <option value="">Selecciona un año</option>
-                    {vehicleYears.map((yearOption) => (
-                      <option key={yearOption} value={String(yearOption)}>
-                        {yearOption}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="publish-car__select-wrapper">
+                    <select
+                      name="year"
+                      value={yearSelectValue}
+                      onChange={handleChange}
+                      className="publish-car__select"
+                    >
+                      <option value="">Selecciona un año</option>
+                      {vehicleYears.map((yearOption) => (
+                        <option key={yearOption} value={String(yearOption)}>
+                          {yearOption}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                   <input
                     type="number"
                     name="year"
