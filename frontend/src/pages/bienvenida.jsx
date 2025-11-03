@@ -305,7 +305,7 @@ const Bienvenida = () => {
 
         <div className="right-side">
           <img src={logo1} alt="CarBid Logo" />
-          <p className="right-side-tagline">Subasta, compra y vende vehiculos con total confianza.</p>
+          <p className="right-side-tagline">Subasta, compra y vende vehiculos con total confianza..</p>
         </div>
       </div>
     </div>
