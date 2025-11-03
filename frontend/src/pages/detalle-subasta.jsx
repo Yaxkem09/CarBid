@@ -555,15 +555,41 @@ const DetalleSubasta = () => {
           <div className="detalle-subasta__gallery">
             {hasImages ? (
               <>
-                <div className="detalle-subasta__gallery-main">
-                  {currentImageSrc && (
+              <div className="detalle-subasta__gallery-main">
+                {canNavigateImages && (
+                  <>
                     <button
                       type="button"
-                      className="detalle-subasta__gallery-expand"
-                      onClick={handleOpenImageModal}
+                      className="detalle-subasta__gallery-nav detalle-subasta__gallery-nav--prev"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        handleShowPreviousImage();
+                      }}
+                      aria-label="Ver imagen anterior"
+                    >
+                      <span aria-hidden="true">‹</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="detalle-subasta__gallery-nav detalle-subasta__gallery-nav--next"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        handleShowNextImage();
+                      }}
+                      aria-label="Ver imagen siguiente"
+                    >
+                      <span aria-hidden="true">›</span>
+                    </button>
+                  </>
+                )}
+                {currentImageSrc && (
+                  <button
+                    type="button"
+                    className="detalle-subasta__gallery-expand"
+                    onClick={handleOpenImageModal}
                       aria-label="Ampliar imagen principal"
                     >
-                      Ampliar imagen
+                      Ampliar
                     </button>
                   )}
                   <img src={currentImageSrc} alt={listing.title} />

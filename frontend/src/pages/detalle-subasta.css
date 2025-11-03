@@ -157,6 +157,47 @@
     0 0 0 0.25rem rgba(79, 70, 229, 0.35);
 }
 
+.detalle-subasta__gallery-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  border: none;
+  background: rgba(15, 23, 42, 0.6);
+  color: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 2;
+  transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.detalle-subasta__gallery-nav span {
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.detalle-subasta__gallery-nav--prev {
+  left: clamp(0.5625rem, 1.3vw, 0.875rem);
+}
+
+.detalle-subasta__gallery-nav--next {
+  right: clamp(0.5625rem, 1.3vw, 0.875rem);
+}
+
+.detalle-subasta__gallery-nav:hover,
+.detalle-subasta__gallery-nav:focus-visible {
+  background: rgba(15, 23, 42, 0.85);
+  transform: translateY(-50%) scale(1.05);
+  outline: none;
+  box-shadow:
+    0 0 0 0.0625rem rgba(248, 250, 252, 0.3),
+    0 0.5rem 1rem rgba(15, 23, 42, 0.25);
+}
+
 .detalle-subasta__gallery-thumbs {
   display: flex;
   gap: 0.5625rem;
@@ -452,22 +493,23 @@
   max-width: min(48rem, 66vw);
   width: 100%;
   max-height: min(68vh, 31.5rem);
-  background: linear-gradient(135deg, rgba(15, 23, 42, 0.85), rgba(30, 41, 59, 0.95));
+  background: transparent;
   border-radius: clamp(0.75rem, 1.5vw, 1.25rem);
-  overflow: hidden;
-  box-shadow: 0 1.5rem 3.5rem rgba(15, 23, 42, 0.4);
+  overflow: visible;
+  box-shadow: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: clamp(0.5rem, 1.5vw, 1rem);
+  padding: 0;
 }
 
 .detalle-subasta__lightbox-content img {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  border-radius: clamp(0.5rem, 1vw, 0.75rem);
-  background: #0f172a;
+  border-radius: clamp(0.75rem, 1.5vw, 1.25rem);
+  background: transparent;
+  box-shadow: 0 0.75rem 2.25rem rgba(15, 23, 42, 0.35);
 }
 
 .detalle-subasta__lightbox-close {
@@ -490,12 +532,11 @@
 
 .detalle-subasta__lightbox-close:hover,
 .detalle-subasta__lightbox-close:focus-visible {
-  background: rgba(79, 70, 229, 0.9);
+  background: rgba(15, 23, 42, 0.85);
   transform: scale(1.05);
   outline: none;
   box-shadow:
-    0 0 0 0.09375rem rgba(248, 250, 252, 0.9),
-    0 0 0 0.25rem rgba(79, 70, 229, 0.45);
+    0 0.5rem 1.125rem rgba(15, 23, 42, 0.35);
 }
 
 .detalle-subasta__lightbox-close span {
@@ -534,12 +575,12 @@
 
 .detalle-subasta__lightbox-nav:hover,
 .detalle-subasta__lightbox-nav:focus-visible {
-  background: rgba(79, 70, 229, 0.85);
+  background: rgba(15, 23, 42, 0.85);
   transform: translateY(-50%) scale(1.06);
   outline: none;
   box-shadow:
-    0 0 0 0.09375rem rgba(248, 250, 252, 0.8),
-    0 0 0 0.25rem rgba(79, 70, 229, 0.35);
+    0 0 0 0.0625rem rgba(248, 250, 252, 0.35),
+    0 0.5rem 1rem rgba(15, 23, 42, 0.3);
 }
 
 @media (max-width: 48rem) {
