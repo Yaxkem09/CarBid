@@ -80,7 +80,20 @@
 }
 
 .historial-table__header span {
+  justify-content: center;
+  text-align: center;
+}
+
+.historial-table__header span:first-child,
+.historial-table__row span:first-child {
   justify-content: flex-start;
+  text-align: left;
+}
+
+.historial-table__header span:last-child,
+.historial-table__row span:last-child {
+  justify-content: flex-end;
+  text-align: right;
 }
 
 .historial-table__row {
@@ -98,13 +111,9 @@
   background: rgba(226, 232, 240, 0.6);
 }
 
-.historial-table__row span:not(:first-child) {
+.historial-table__row span:not(:first-child):not(:last-child) {
   justify-content: center;
   text-align: center;
-}
-
-.historial-table__row span:last-child {
-  justify-content: flex-end;
 }
 
 .historial-table__empty {
