@@ -150,7 +150,13 @@ const Historial = () => {
         <div className="historial-page__sections">
           <section className="historial-card">
             <h2>Mis subastas</h2>
-            <div className="historial-table">
+            <div
+              className="historial-table"
+              style={{
+                '--table-columns':
+                  'minmax(12rem, 2.1fr) repeat(3, minmax(6.75rem, 1fr)) minmax(5.25rem, auto)',
+              }}
+            >
               <div className="historial-table__header">
                 <span>Vehiculo</span>
                 <span>Mi oferta actual</span>
@@ -181,7 +187,13 @@ const Historial = () => {
 
           <section className="historial-card">
             <h2>Ganadas</h2>
-            <div className="historial-table">
+            <div
+              className="historial-table"
+              style={{
+                '--table-columns':
+                  'minmax(12rem, 2.2fr) repeat(2, minmax(6.75rem, 1fr)) minmax(5.25rem, auto)',
+              }}
+            >
               <div className="historial-table__header">
                 <span>Vehiculo</span>
                 <span>Oferta ganadora</span>
@@ -210,7 +222,13 @@ const Historial = () => {
 
           <section className="historial-card">
             <h2>Mis publicaciones</h2>
-            <div className="historial-table">
+            <div
+              className="historial-table"
+              style={{
+                '--table-columns':
+                  'minmax(12rem, 2fr) minmax(6.75rem, 0.95fr) minmax(7rem, 1.05fr) minmax(6.75rem, 1fr) minmax(5.25rem, auto)',
+              }}
+            >
               <div className="historial-table__header">
                 <span>Vehiculo</span>
                 <span>Estado</span>
