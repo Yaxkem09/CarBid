@@ -23,10 +23,12 @@ const Historial = () => {
   const dateFormatter = useMemo(
     () =>
       new Intl.DateTimeFormat('es-GT', {
-        day: '2-digit',
-        month: '2-digit',
-        hour: '2-digit',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        hour: 'numeric',
         minute: '2-digit',
+        hour12: true,
       }),
     [],
   );
@@ -127,6 +129,16 @@ const Historial = () => {
     return bid.result || 'Finalizada';
   };
 
+  const getBidStatusClassName = (bid) =>
+    bid.listingStatus === 'active'
+      ? 'historial-status historial-status--active'
+      : 'historial-status historial-status--finished';
+
+  const getListingStatusClassName = (listing) =>
+    listing.status === 'active'
+      ? 'historial-status historial-status--active'
+      : 'historial-status historial-status--finished';
+
   const getListingStatusLabel = (listing) => {
     if (listing.status === 'active') {
       return 'En vivo';
@@ -150,7 +162,13 @@ const Historial = () => {
         <div className="historial-page__sections">
           <section className="historial-card">
             <h2>Mis subastas</h2>
-            <div className="historial-table">
+            <div
+              className="historial-table"
+              style={{
+                '--table-columns':
+                  'minmax(12rem, 2.1fr) repeat(3, minmax(6.75rem, 1fr)) minmax(5.25rem, auto)',
+              }}
+            >
               <div className="historial-table__header">
                 <span>Vehiculo</span>
                 <span>Mi oferta actual</span>
@@ -167,11 +185,13 @@ const Historial = () => {
                 <div className="historial-table__row" key={bid.listingId}>
                   <span data-label="Vehiculo">{bid.listingTitle}</span>
                   <span data-label="Mi oferta actual">{formatCurrency(bid.amount)}</span>
-                  <span data-label="Estado">{getBidStatusLabel(bid)}</span>
+                  <span data-label="Estado">
+                    <span className={getBidStatusClassName(bid)}>{getBidStatusLabel(bid)}</span>
+                  </span>
                   <span data-label="Cierra">{formatClosingDate(bid.listingEndsAt)}</span>
                   <span data-label="Acciones">
                     <button type="button" onClick={() => handleViewAuction(bid.listingId)}>
-                      Ver
+                      Ver detalles
                     </button>
                   </span>
                 </div>
@@ -181,7 +201,13 @@ const Historial = () => {
 
           <section className="historial-card">
             <h2>Ganadas</h2>
-            <div className="historial-table">
+            <div
+              className="historial-table"
+              style={{
+                '--table-columns':
+                  'minmax(12rem, 2.2fr) repeat(2, minmax(6.75rem, 1fr)) minmax(5.25rem, auto)',
+              }}
+            >
               <div className="historial-table__header">
                 <span>Vehiculo</span>
                 <span>Oferta ganadora</span>
@@ -200,7 +226,7 @@ const Historial = () => {
                   <span data-label="Fecha cierre">{formatClosingDate(bid.listingEndsAt)}</span>
                   <span data-label="Acciones">
                     <button type="button" onClick={() => handleViewAuction(bid.listingId)}>
-                      Ver
+                      Ver detalles
                     </button>
                   </span>
                 </div>
@@ -210,7 +236,13 @@ const Historial = () => {
 
           <section className="historial-card">
             <h2>Mis publicaciones</h2>
-            <div className="historial-table">
+            <div
+              className="historial-table"
+              style={{
+                '--table-columns':
+                  'minmax(12rem, 2fr) minmax(6.75rem, 0.95fr) minmax(7rem, 1.05fr) minmax(6.75rem, 1fr) minmax(5.25rem, auto)',
+              }}
+            >
               <div className="historial-table__header">
                 <span>Vehiculo</span>
                 <span>Estado</span>
@@ -226,7 +258,11 @@ const Historial = () => {
               {myListings.map((listing) => (
                 <div className="historial-table__row" key={listing.id}>
                   <span data-label="Vehiculo">{listing.title}</span>
-                  <span data-label="Estado">{getListingStatusLabel(listing)}</span>
+                  <span data-label="Estado">
+                    <span className={getListingStatusClassName(listing)}>
+                      {getListingStatusLabel(listing)}
+                    </span>
+                  </span>
                   <span data-label="Finaliza">
                     {listing.status === 'active' ? formatClosingDate(listing.endsAt) : '-'}
                   </span>
@@ -235,7 +271,7 @@ const Historial = () => {
                   </span>
                   <span data-label="Acciones">
                     <button type="button" onClick={() => handleViewAuction(listing.id)}>
-                      Ver
+                      Ver detalles
                     </button>
                   </span>
                 </div>

@@ -31,6 +31,24 @@ export const vehicleModels = [
   'Accord',
 ];
 
+export const vehicleColors = [
+  'Negro',
+  'Blanco',
+  'Gris',
+  'Plata',
+  'Rojo',
+  'Azul',
+  'Verde',
+  'Amarillo',
+  'Naranja',
+  'Marron',
+  'Beige',
+  'Dorado',
+  'Cafe',
+  'Violeta',
+  'Otro',
+];
+
 const currentYear = new Date().getFullYear();
 const earliestYear = 1995;
 

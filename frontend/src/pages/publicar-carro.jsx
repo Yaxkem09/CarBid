@@ -1,13 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
-import { vehicleBrands, vehicleModels, vehicleYears } from '../constants/vehicleOptions';
+import { vehicleBrands, vehicleModels, vehicleColors, vehicleYears } from '../constants/vehicleOptions';
 import './publicar-carro.css';
 
 const initialState = {
   title: '',
   brand: '',
   model: '',
+  color: '',
   year: '',
   basePrice: '',
   minIncrement: '',
@@ -69,27 +70,29 @@ function PhotoGrid({ images = [], onRemove }) {
     <div className="publish-car__photo-grid">
       {[0, 1, 2, 3].map((index) => {
         const image = images[index];
-        const isFilled = Boolean(image);
-        const slotProps =
-          isFilled && typeof onRemove === 'function'
-            ? {
-                role: 'button',
-                tabIndex: 0,
-                onClick: () => onRemove(index),
-                onKeyDown: (event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    onRemove(index);
-                  }
-                },
-                title: 'Haz clic o presiona Enter para eliminar esta foto',
-              }
-            : {};
-
         return (
-          <div key={index} className="publish-car__photo-slot" {...slotProps}>
-            {isFilled ? (
-              <img src={image} alt={`foto-${index}`} />
+          <div
+            key={index}
+            className={`publish-car__photo-slot${image ? ' publish-car__photo-slot--filled' : ''}`}
+          >
+            {image ? (
+              <>
+                <img src={image} alt={`Foto ${index + 1}`} />
+                {typeof onRemove === 'function' && (
+                  <button
+                    type="button"
+                    className="publish-car__photo-remove"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      onRemove(index);
+                    }}
+                    aria-label={`Eliminar foto ${index + 1}`}
+                  >
+                    x
+                  </button>
+                )}
+              </>
             ) : (
               <span>+ Foto {index + 1}</span>
             )}
@@ -101,7 +104,7 @@ function PhotoGrid({ images = [], onRemove }) {
 }
 
 function PreviewCard({ data, photos = [] }) {
-  const { title, brand, model, year, basePrice, minIncrement, endsAt, description } = data;
+  const { title, brand, model, color, year, basePrice, minIncrement, endsAt, description } = data;
 
   const price = formatCurrency(basePrice) || 'Q0.00';
   const increment = formatCurrency(minIncrement) || 'Q0.00';
@@ -127,6 +130,7 @@ function PreviewCard({ data, photos = [] }) {
           {model || 'Modelo'}{' '}
           {year ? ` - ${year}` : '- Año'}
         </p>
+        <p className="publish-car__preview-meta">Color: <strong>{color || 'Color'}</strong></p>
         <p className="publish-car__preview-meta">Precio base: <strong>{price}</strong></p>
         <p className="publish-car__preview-meta">Incremento minimo: <strong>{increment}</strong></p>
         <p className="publish-car__preview-meta">Cierre: {endsAtText}</p>
@@ -134,21 +138,22 @@ function PreviewCard({ data, photos = [] }) {
           <p className="publish-car__preview-note">{description}</p>
         )}
       </div>
-      <button type="button" className="publish-car__preview-button">
-        Simular publicacion
-      </button>
     </aside>
   );
 }
 
 const getValidationError = (data) => {
-  const { title, brand, model, year, basePrice, minIncrement, endsAt } = data;
+  const { title, brand, model, color, year, basePrice, minIncrement, endsAt } = data;
 
   if (!title.trim()) {
     return 'Agrega un titulo descriptivo para la subasta.';
   }
-  if (!brand.trim() || !model.trim()) {
-    return 'Completa la marca y el modelo del vehiculo.';
+  const normalizedColor = color.trim();
+  if (!brand.trim() || !model.trim() || !normalizedColor) {
+    return 'Completa la marca, el modelo y el color del vehiculo.';
+  }
+  if (normalizedColor.length > 80) {
+    return 'El color debe tener maximo 80 caracteres.';
   }
   const yearNumber = Number(year);
   const currentYearLimit = new Date().getFullYear() + 1;
@@ -187,6 +192,21 @@ const PublicarCarro = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  const sortedBrands = useMemo(
+    () => [...vehicleBrands].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' })),
+    [],
+  );
+
+  const sortedModels = useMemo(
+    () => [...vehicleModels].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' })),
+    [],
+  );
+
+  const sortedColors = useMemo(
+    () => [...vehicleColors].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' })),
+    [],
+  );
+
   const brandSelectValue = useMemo(
     () => (vehicleBrands.includes(formData.brand) ? formData.brand : ''),
     [formData.brand],
@@ -195,6 +215,11 @@ const PublicarCarro = () => {
   const modelSelectValue = useMemo(
     () => (vehicleModels.includes(formData.model) ? formData.model : ''),
     [formData.model],
+  );
+
+  const colorSelectValue = useMemo(
+    () => (vehicleColors.includes(formData.color) ? formData.color : ''),
+    [formData.color],
   );
 
   const yearSelectValue = useMemo(() => {
@@ -254,17 +279,18 @@ const PublicarCarro = () => {
       return false;
     }
 
-    let added = false;
-    updatePhotos((prev) => {
-      const availableSlots = Math.max(0, MAX_PHOTOS - prev.length);
-      if (!availableSlots) {
-        return prev;
-      }
-      const next = [...prev, ...accepted.slice(0, availableSlots)];
-      added = next.length > prev.length;
-      return next;
-    });
-    return added;
+    const availableSlots = Math.max(0, MAX_PHOTOS - photosRef.current.length);
+    if (!availableSlots) {
+      return false;
+    }
+
+    const nextPhotos = accepted.slice(0, availableSlots);
+    if (!nextPhotos.length) {
+      return false;
+    }
+
+    updatePhotos((prev) => [...prev, ...nextPhotos]);
+    return true;
   };
 
   const handlePhotoInputChange = (event) => {
@@ -284,6 +310,7 @@ const PublicarCarro = () => {
 
   const handlePhotoDrop = (event) => {
     event.preventDefault();
+    event.stopPropagation();
     const success = ingestFiles(event.dataTransfer?.files);
     if (!success) {
       const message =
@@ -298,6 +325,10 @@ const PublicarCarro = () => {
 
   const handlePhotoDragOver = (event) => {
     event.preventDefault();
+    event.stopPropagation();
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'copy';
+    }
   };
 
   const handlePhotoRemove = (index) => {
@@ -347,6 +378,7 @@ const PublicarCarro = () => {
     const sanitizedTitle = formData.title.trim();
     const sanitizedBrand = formData.brand.trim();
     const sanitizedModel = formData.model.trim();
+    const sanitizedColor = formData.color.trim();
     const sanitizedDescription = formData.description.trim();
     const sanitizedEndsAt = formData.endsAt;
     const sanitizedYear = Number(formData.year);
@@ -357,6 +389,7 @@ const PublicarCarro = () => {
     formPayload.append('title', sanitizedTitle);
     formPayload.append('brand', sanitizedBrand);
     formPayload.append('model', sanitizedModel);
+    formPayload.append('color', sanitizedColor);
     formPayload.append('year', String(sanitizedYear));
     formPayload.append('basePrice', String(sanitizedBasePrice));
     formPayload.append('minIncrement', String(sanitizedMinIncrement));
@@ -412,19 +445,21 @@ const PublicarCarro = () => {
               </Field>
               <div className="publish-car__grid publish-car__grid--three">
                 <Field label="Marca">
-                  <select
-                    name="brand"
-                    value={brandSelectValue}
-                    onChange={handleChange}
-                    className="publish-car__select"
-                  >
-                    <option value="">Selecciona una marca</option>
-                    {vehicleBrands.map((brand) => (
-                      <option key={brand} value={brand}>
-                        {brand}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="publish-car__select-wrapper">
+                    <select
+                      name="brand"
+                      value={brandSelectValue}
+                      onChange={handleChange}
+                      className="publish-car__select"
+                    >
+                      <option value="">Selecciona una marca</option>
+                      {sortedBrands.map((brand) => (
+                        <option key={brand} value={brand}>
+                          {brand}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                   <input
                     type="text"
                     name="brand"
@@ -435,19 +470,21 @@ const PublicarCarro = () => {
                   />
                 </Field>
                 <Field label="Modelo">
-                  <select
-                    name="model"
-                    value={modelSelectValue}
-                    onChange={handleChange}
-                    className="publish-car__select"
-                  >
-                    <option value="">Selecciona un modelo</option>
-                    {vehicleModels.map((modelName) => (
-                      <option key={modelName} value={modelName}>
-                        {modelName}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="publish-car__select-wrapper">
+                    <select
+                      name="model"
+                      value={modelSelectValue}
+                      onChange={handleChange}
+                      className="publish-car__select"
+                    >
+                      <option value="">Selecciona un modelo</option>
+                      {sortedModels.map((modelName) => (
+                        <option key={modelName} value={modelName}>
+                          {modelName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                   <input
                     type="text"
                     name="model"
@@ -457,20 +494,47 @@ const PublicarCarro = () => {
                     className="publish-car__input publish-car__input--secondary"
                   />
                 </Field>
-                <Field label="Año">
-                  <select
-                    name="year"
-                    value={yearSelectValue}
+                <Field label="Color">
+                  <div className="publish-car__select-wrapper">
+                    <select
+                      name="color"
+                      value={colorSelectValue}
+                      onChange={handleChange}
+                      className="publish-car__select"
+                    >
+                      <option value="">Selecciona un color</option>
+                      {sortedColors.map((colorOption) => (
+                        <option key={colorOption} value={colorOption}>
+                          {colorOption}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <input
+                    type="text"
+                    name="color"
+                    value={formData.color}
                     onChange={handleChange}
-                    className="publish-car__select"
-                  >
-                    <option value="">Selecciona un año</option>
-                    {vehicleYears.map((yearOption) => (
-                      <option key={yearOption} value={String(yearOption)}>
-                        {yearOption}
-                      </option>
-                    ))}
-                  </select>
+                    placeholder="O describe otro color"
+                    className="publish-car__input publish-car__input--secondary"
+                  />
+                </Field>
+                <Field label="Año">
+                  <div className="publish-car__select-wrapper">
+                    <select
+                      name="year"
+                      value={yearSelectValue}
+                      onChange={handleChange}
+                      className="publish-car__select"
+                    >
+                      <option value="">Selecciona un año</option>
+                      {vehicleYears.map((yearOption) => (
+                        <option key={yearOption} value={String(yearOption)}>
+                          {yearOption}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                   <input
                     type="number"
                     name="year"
