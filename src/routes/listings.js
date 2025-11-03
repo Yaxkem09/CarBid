@@ -256,6 +256,7 @@ function mapListing(row, images = [], viewerId = null, extras = {}) {
     title: row.title,
     brand: row.brand,
     model: row.model,
+    color: row.color ?? null,
     year: row.year,
     basePrice: basePriceRaw !== undefined && basePriceRaw !== null ? Number(basePriceRaw) : null,
     minIncrement: minIncrementRaw !== undefined && minIncrementRaw !== null ? Number(minIncrementRaw) : null,
@@ -303,6 +304,7 @@ router.get('/', auth, async (req, res) => {
     const status = req.query.status;
     const brand = req.query.brand?.trim();
     const model = req.query.model?.trim();
+    const color = req.query.color?.trim();
     const year = Number.parseInt(req.query.year, 10);
     const minPrice = Number.parseFloat(req.query.minPrice);
     const maxPrice = Number.parseFloat(req.query.maxPrice);
@@ -317,12 +319,31 @@ router.get('/', auth, async (req, res) => {
       where.status = status;
     }
 
+    const andConditions = [];
+
     if (brand) {
-      where.brand = brand;
+      andConditions.push(
+        sequelize.where(sequelize.fn('LOWER', sequelize.col('brand')), brand.toLowerCase()),
+      );
     }
 
     if (model) {
-      where.model = model;
+      andConditions.push(
+        sequelize.where(sequelize.fn('LOWER', sequelize.col('model')), model.toLowerCase()),
+      );
+    }
+
+    if (color) {
+      andConditions.push(
+        sequelize.where(sequelize.fn('LOWER', sequelize.col('color')), color.toLowerCase()),
+      );
+    }
+
+    if (andConditions.length) {
+      if (!where[Op.and]) {
+        where[Op.and] = [];
+      }
+      where[Op.and].push(...andConditions);
     }
 
     if (Number.isInteger(year)) {
@@ -463,14 +484,18 @@ router.post('/', auth, handleImageUpload, async (req, res) => {
   const title = readField('title');
   const brand = readField('brand');
   const model = readField('model');
+  const colorValue = readField('color');
   const yearValue = readField('year');
   const basePriceValue = readField('basePrice');
   const minIncrementValue = readField('minIncrement');
   const description = readField('description');
   const endsAtValue = readField('endsAt');
 
-  if (!title || !brand || !model || !yearValue || !basePriceValue || !minIncrementValue || !endsAtValue) {
-    return rejectWithCleanup(400, 'Campos obligatorios: titulo, marca, modelo, ano, precio base, incremento minimo y fecha de cierre.');
+  if (!title || !brand || !model || !colorValue || !yearValue || !basePriceValue || !minIncrementValue || !endsAtValue) {
+    return rejectWithCleanup(
+      400,
+      'Campos obligatorios: titulo, marca, modelo, color, ano, precio base, incremento minimo y fecha de cierre.',
+    );
   }
 
   const numericYear = Number(yearValue);
@@ -488,6 +513,10 @@ router.post('/', auth, handleImageUpload, async (req, res) => {
 
   if (!Number.isFinite(numericMinIncrement) || numericMinIncrement <= 0) {
     return rejectWithCleanup(400, 'El incremento minimo debe ser un numero mayor que 0.');
+  }
+
+  if (colorValue.length > 80) {
+    return rejectWithCleanup(400, 'El color debe contener como maximo 80 caracteres.');
   }
 
   const closingDate = new Date(endsAtValue);
@@ -519,6 +548,7 @@ router.post('/', auth, handleImageUpload, async (req, res) => {
           title,
           brand,
           model,
+          color: colorValue,
           year: numericYear,
           basePrice: numericBasePrice,
           minIncrement: numericMinIncrement,
@@ -587,7 +617,11 @@ router.post('/:id/bids', auth, async (req, res) => {
     Number(highest ?? 0),
   );
   if (amount <= minAmount) {
-    return res.status(400).json({ message: `La oferta debe superar $${minAmount}.` });
+    const formattedMinAmount = Number(minAmount ?? 0).toLocaleString('es-GT', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+    return res.status(400).json({ message: `La oferta debe superar Q${formattedMinAmount}.` });
   }
 
   const createdBid = await Bid.create({

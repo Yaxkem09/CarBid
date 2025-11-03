@@ -76,6 +76,9 @@ export const Auction = sequelize.define(
       type: DataTypes.STRING(120),
       allowNull: false,
     },
+    color: {
+      type: DataTypes.STRING(80),
+    },
     year: {
       type: DataTypes.INTEGER,
       allowNull: false,
