@@ -71,6 +71,7 @@ const DetalleSubasta = () => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [viewerId, setViewerId] = useState(null);
   const [isLeading, setIsLeading] = useState(false);
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const socketRef = useRef(null);
   const viewerIdRef = useRef(null);
 
@@ -359,6 +360,89 @@ const DetalleSubasta = () => {
     }
   }, [listing]);
 
+  const listingImages = Array.isArray(listing?.images) ? listing.images : [];
+  const hasImages = listingImages.length > 0;
+  const canNavigateImages = listingImages.length > 1;
+  const safeActiveIndex = hasImages
+    ? Math.min(activeImageIndex, listingImages.length - 1)
+    : 0;
+  const currentImageSrc = hasImages
+    ? resolveImageSrc(listingImages[safeActiveIndex])
+    : '';
+  const primaryDescriptor = [listing?.brand, listing?.model].filter(Boolean).join(' ').trim();
+  const vehicleMetaItems = [
+    primaryDescriptor ? { key: 'brand-model', label: primaryDescriptor } : null,
+    listing?.year ? { key: 'year', label: `A\u00f1o ${listing?.year}` } : null,
+    listing?.color ? { key: 'color', label: `Color ${listing?.color}` } : null,
+  ].filter((item) => item && item.label && item.label.trim().length > 0);
+  const handleOpenImageModal = useCallback(() => {
+    if (hasImages) {
+      setIsImageModalOpen(true);
+    }
+  }, [hasImages]);
+  const handleCloseImageModal = useCallback(() => {
+    setIsImageModalOpen(false);
+  }, []);
+  const cycleImage = useCallback(
+    (step) => {
+      if (!hasImages || listingImages.length <= 1) {
+        return;
+      }
+      const total = listingImages.length;
+      setActiveImageIndex((previousIndex) => {
+        const baseIndex =
+          previousIndex >= 0 && previousIndex < total ? previousIndex : safeActiveIndex;
+        const nextIndex = (baseIndex + step + total) % total;
+        return nextIndex;
+      });
+    },
+    [hasImages, listingImages.length, safeActiveIndex],
+  );
+  const handleShowNextImage = useCallback(() => {
+    cycleImage(1);
+  }, [cycleImage]);
+  const handleShowPreviousImage = useCallback(() => {
+    cycleImage(-1);
+  }, [cycleImage]);
+
+  useEffect(() => {
+    if (isImageModalOpen && !currentImageSrc) {
+      setIsImageModalOpen(false);
+    }
+  }, [currentImageSrc, isImageModalOpen]);
+
+  useEffect(() => {
+    if (!isImageModalOpen) {
+      return;
+    }
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setIsImageModalOpen(false);
+        return;
+      }
+      if (event.key === 'ArrowRight' && canNavigateImages) {
+        event.preventDefault();
+        cycleImage(1);
+        return;
+      }
+      if (event.key === 'ArrowLeft' && canNavigateImages) {
+        event.preventDefault();
+        cycleImage(-1);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    const previousOverflow = typeof document !== 'undefined' ? document.body.style.overflow : null;
+    if (typeof document !== 'undefined') {
+      document.body.style.overflow = 'hidden';
+    }
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      if (typeof document !== 'undefined' && previousOverflow !== null) {
+        document.body.style.overflow = previousOverflow;
+      }
+    };
+  }, [canNavigateImages, cycleImage, isImageModalOpen]);
+
   const handleBidSubmit = async (event) => {
     event.preventDefault();
     setBidError('');
@@ -437,171 +521,233 @@ const DetalleSubasta = () => {
     }
     return isLeading ? 'Tu oferta lidera' : 'Otro usuario lidera';
   })();
-  const hasImages = Array.isArray(listing.images) && listing.images.length > 0;
-  const currentImageSrc = hasImages
-    ? resolveImageSrc(listing.images[activeImageIndex])
-    : '';
-  const vehicleDescriptorParts = [
-    [listing.brand, listing.model].filter(Boolean).join(' ').trim(),
-    listing.year,
-    listing.color,
-  ].filter(Boolean);
-  const vehicleDescriptor = vehicleDescriptorParts.join(' · ');
-
   return (
-    <div className="detalle-subasta">
-      <section className="detalle-subasta__info">
-        <div className="detalle-subasta__header">
-          <h1>{listing.title}</h1>
-          <span
-            className={`detalle-subasta__badge ${
-              isLive ? 'detalle-subasta__badge--live' : 'detalle-subasta__badge--ended'
-            }`}
-          >
-            {isLive ? 'En vivo' : 'Finalizada'}
-          </span>
-        </div>
-
-        <p className="detalle-subasta__meta">{vehicleDescriptor || listing.title}</p>
-
-        <div className="detalle-subasta__timer">
-          <span className="detalle-subasta__timer-label">Tiempo restante</span>
-          <strong>{timeLeft || 'Sin informacion'}</strong>
-        </div>
-
-        <div className="detalle-subasta__gallery">
-          {hasImages ? (
-            <>
-              <div className="detalle-subasta__gallery-main">
-                <img src={currentImageSrc} alt={listing.title} />
-              </div>
-              {listing.images.length > 1 && (
-                <div className="detalle-subasta__gallery-thumbs">
-                  {listing.images.map((image, index) => (
-                    <button
-                      key={image}
-                      type="button"
-                      className={`detalle-subasta__thumb ${
-                        index === activeImageIndex ? 'detalle-subasta__thumb--active' : ''
-                      }`}
-                      onClick={() => setActiveImageIndex(index)}
-                    >
-                      <img src={resolveImageSrc(image)} alt={`${listing.title} ${index + 1}`} />
-                    </button>
+    <>
+      <div className="detalle-subasta">
+        <section className="detalle-subasta__info">
+          <div className="detalle-subasta__header">
+            <div className="detalle-subasta__title-block">
+              <h1>{listing.title}</h1>
+              {vehicleMetaItems.length > 0 && (
+                <div className="detalle-subasta__meta">
+                  {vehicleMetaItems.map(({ key, label }) => (
+                    <span key={key} className="detalle-subasta__meta-chip">
+                      {label}
+                    </span>
                   ))}
                 </div>
               )}
-            </>
-          ) : (
-            <div className="detalle-subasta__gallery-placeholder">
-              No hay imagenes disponibles.
             </div>
-          )}
-        </div>
-
-        <p className="detalle-subasta__description">{listing.description}</p>
-        <p className="detalle-subasta__closing">
-          Cierra el: <strong>{formatDateTime(listing.endsAt)}</strong>
-        </p>
-      </section>
-
-      <section className="detalle-subasta__bids">
-        <h2>Realizar oferta</h2>
-        <div className="detalle-subasta__stats">
-          <p>
-            <span className="detalle-subasta__stats-label">Precio base:</span>{' '}
-            <strong>{formatCurrency(listing.basePrice)}</strong>
-          </p>
-          <p>
-            <span className="detalle-subasta__stats-label">Oferta mas alta:</span>{' '}
-            <strong>
-              {highestBidAmount ? formatCurrency(highestBidAmount) : 'Sin ofertas'}
-            </strong>
-          </p>
-          <p>
-            <span className="detalle-subasta__stats-label">{leaderLabelTitle}</span>{' '}
-            <strong>{leaderLabelValue}</strong>
-          </p>
-          <p>
-            <span className="detalle-subasta__stats-label">Incremento minimo:</span>{' '}
-            <strong>{formatCurrency(effectiveMinIncrement)}</strong>
-          </p>
-        </div>
-        <form onSubmit={handleBidSubmit} className="detalle-subasta__form">
-          <label htmlFor="bidAmount">
-            Tu incremento (se suma a {formatCurrency(baseAmount)})
-          </label>
-          <input
-            id="bidAmount"
-            type="number"
-            min={effectiveMinIncrement}
-            step="0.01"
-            value={extraAmount}
-            onChange={(event) => setExtraAmount(event.target.value)}
-            required
-            disabled={!isLive}
-          />
-          <div className="detalle-subasta__quick-buttons">
-            {incrementOptions.map(({ multiplier, value }) => (
-              <button
-                key={multiplier}
-                type="button"
-                onClick={() => setExtraAmount(String(value))}
-                disabled={!isLive}
-              >
-                +{multiplier}x ({formatCurrency(value)})
-              </button>
-            ))}
+            <span
+              className={`detalle-subasta__badge ${
+                isLive ? 'detalle-subasta__badge--live' : 'detalle-subasta__badge--ended'
+              }`}
+            >
+              {isLive ? 'En vivo' : 'Finalizada'}
+            </span>
           </div>
-          <div className="detalle-subasta__total">
-            <span>Total oferta:</span>
-            <strong>{formatCurrency(totalOffer)}</strong>
+
+          <div className="detalle-subasta__timer">
+            <span className="detalle-subasta__timer-label">Tiempo restante</span>
+            <strong>{timeLeft || 'Sin informacion'}</strong>
           </div>
-          <button type="submit" disabled={bidLoading || !isLive}>
-            {bidLoading ? 'Enviando...' : 'Enviar oferta'}
-          </button>
-        </form>
-        {bidError && <p className="detalle-subasta__error">{bidError}</p>}
-        {!isLive && (
-          <p className="detalle-subasta__ended-note">
-            La subasta ya no recibe ofertas.
-          </p>
-        )}
 
-        <h3>Historial de ofertas</h3>
-        <ul className="detalle-subasta__bid-list">
-          {sortedBids.map((bid) => {
-            const isLeadingBid = bid.id === leadingBidId;
-            const bidBelongsToViewer =
-              viewerIdString && bid.bidderId
-                ? String(bid.bidderId) === viewerIdString
-                : false;
-            const statusLabel = listing?.status === 'ended'
-              ? (bidBelongsToViewer ? 'Tu oferta gano' : 'Oferta ganadora')
-              : (bidBelongsToViewer ? 'Tu oferta lidera' : 'Oferta lider');
-
-            return (
-              <li
-                key={bid.id}
-                className={`detalle-subasta__bid${
-                  isLeadingBid ? ' detalle-subasta__bid--leading' : ''
-                }`}
-              >
-                <div>
-                  <strong>{formatCurrency(bid.amount)}</strong> | {formatDateTime(bid.createdAt)}
+          <div className="detalle-subasta__gallery">
+            {hasImages ? (
+              <>
+                <div className="detalle-subasta__gallery-main">
+                  {currentImageSrc && (
+                    <button
+                      type="button"
+                      className="detalle-subasta__gallery-expand"
+                      onClick={handleOpenImageModal}
+                      aria-label="Ampliar imagen principal"
+                    >
+                      Ampliar imagen
+                    </button>
+                  )}
+                  <img src={currentImageSrc} alt={listing.title} />
                 </div>
-                {isLeadingBid && (
-                  <span className="detalle-subasta__bid-status">
-                    {statusLabel}
-                  </span>
+                {listing.images.length > 1 && (
+                  <div className="detalle-subasta__gallery-thumbs">
+                    {listing.images.map((image, index) => (
+                      <button
+                        key={image}
+                        type="button"
+                        className={`detalle-subasta__thumb ${
+                          index === activeImageIndex ? 'detalle-subasta__thumb--active' : ''
+                        }`}
+                        onClick={() => setActiveImageIndex(index)}
+                      >
+                        <img src={resolveImageSrc(image)} alt={`${listing.title} ${index + 1}`} />
+                      </button>
+                    ))}
+                  </div>
                 )}
-              </li>
-            );
-          })}
-          {sortedBids.length === 0 && <li>Todavia no hay ofertas.</li>}
-        </ul>
-      </section>
-    </div>
+              </>
+            ) : (
+              <div className="detalle-subasta__gallery-placeholder">
+                No hay imagenes disponibles.
+              </div>
+            )}
+          </div>
+
+          <p className="detalle-subasta__description">{listing.description}</p>
+          <p className="detalle-subasta__closing">
+            Cierra el: <strong>{formatDateTime(listing.endsAt)}</strong>
+          </p>
+        </section>
+
+        <section className="detalle-subasta__bids">
+          <h2>Realizar oferta</h2>
+          <div className="detalle-subasta__stats">
+            <p>
+              <span className="detalle-subasta__stats-label">Precio base:</span>{' '}
+              <strong>{formatCurrency(listing.basePrice)}</strong>
+            </p>
+            <p>
+              <span className="detalle-subasta__stats-label">Oferta mas alta:</span>{' '}
+              <strong>
+                {highestBidAmount ? formatCurrency(highestBidAmount) : 'Sin ofertas'}
+              </strong>
+            </p>
+            <p>
+              <span className="detalle-subasta__stats-label">{leaderLabelTitle}</span>{' '}
+              <strong>{leaderLabelValue}</strong>
+            </p>
+            <p>
+              <span className="detalle-subasta__stats-label">Incremento minimo:</span>{' '}
+              <strong>{formatCurrency(effectiveMinIncrement)}</strong>
+            </p>
+          </div>
+          <form onSubmit={handleBidSubmit} className="detalle-subasta__form">
+            <label htmlFor="bidAmount">
+              Tu incremento (se suma a {formatCurrency(baseAmount)})
+            </label>
+            <input
+              id="bidAmount"
+              type="number"
+              min={effectiveMinIncrement}
+              step="0.01"
+              value={extraAmount}
+              onChange={(event) => setExtraAmount(event.target.value)}
+              required
+              disabled={!isLive}
+            />
+            <div className="detalle-subasta__quick-buttons">
+              {incrementOptions.map(({ multiplier, value }) => (
+                <button
+                  key={multiplier}
+                  type="button"
+                  onClick={() => setExtraAmount(String(value))}
+                  disabled={!isLive}
+                >
+                  +{multiplier}x ({formatCurrency(value)})
+                </button>
+              ))}
+            </div>
+            <div className="detalle-subasta__total">
+              <span>Total oferta:</span>
+              <strong>{formatCurrency(totalOffer)}</strong>
+            </div>
+            <button type="submit" disabled={bidLoading || !isLive}>
+              {bidLoading ? 'Enviando...' : 'Enviar oferta'}
+            </button>
+          </form>
+          {bidError && <p className="detalle-subasta__error">{bidError}</p>}
+          {!isLive && (
+            <p className="detalle-subasta__ended-note">
+              La subasta ya no recibe ofertas.
+            </p>
+          )}
+
+          <h3>Historial de ofertas</h3>
+          <ul className="detalle-subasta__bid-list">
+            {sortedBids.map((bid) => {
+              const isLeadingBid = bid.id === leadingBidId;
+              const bidBelongsToViewer =
+                viewerIdString && bid.bidderId
+                  ? String(bid.bidderId) === viewerIdString
+                  : false;
+              const statusLabel = listing?.status === 'ended'
+                ? (bidBelongsToViewer ? 'Tu oferta gano' : 'Oferta ganadora')
+                : (bidBelongsToViewer ? 'Tu oferta lidera' : 'Oferta lider');
+
+              return (
+                <li
+                  key={bid.id}
+                  className={`detalle-subasta__bid${
+                    isLeadingBid ? ' detalle-subasta__bid--leading' : ''
+                  }`}
+                >
+                  <div>
+                    <strong>{formatCurrency(bid.amount)}</strong> | {formatDateTime(bid.createdAt)}
+                  </div>
+                  {isLeadingBid && (
+                    <span className="detalle-subasta__bid-status">
+                      {statusLabel}
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+            {sortedBids.length === 0 && <li>Todavia no hay ofertas.</li>}
+          </ul>
+        </section>
+      </div>
+      {isImageModalOpen && currentImageSrc && (
+        <div
+          className="detalle-subasta__lightbox"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Imagen ampliada de ${listing.title}`}
+          onClick={handleCloseImageModal}
+        >
+          <div
+            className="detalle-subasta__lightbox-content"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="detalle-subasta__lightbox-close"
+              onClick={handleCloseImageModal}
+              aria-label="Cerrar imagen ampliada"
+            >
+              <span aria-hidden="true">&times;</span>
+            </button>
+            {canNavigateImages && (
+              <>
+                <button
+                  type="button"
+                  className="detalle-subasta__lightbox-nav detalle-subasta__lightbox-nav--prev"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    handleShowPreviousImage();
+                  }}
+                  aria-label="Ver imagen anterior"
+                >
+                  <span aria-hidden="true">‹</span>
+                </button>
+                <button
+                  type="button"
+                  className="detalle-subasta__lightbox-nav detalle-subasta__lightbox-nav--next"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    handleShowNextImage();
+                  }}
+                  aria-label="Ver imagen siguiente"
+                >
+                  <span aria-hidden="true">›</span>
+                </button>
+              </>
+            )}
+            <img src={currentImageSrc} alt={listing.title} />
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 
