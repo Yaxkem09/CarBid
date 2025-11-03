@@ -49,7 +49,7 @@
 
   min-height: 75vh;
   background: linear-gradient(180deg, var(--pc-bg-page) 0%, rgba(241, 245, 249, 0.4) 40%, #e0e7ff 100%);
-  padding: clamp(var(--pc-space-lg), 3vw, var(--pc-space-2xl))
+  padding: clamp(var(--pc-space-sm), 2vw, var(--pc-space-lg))
     clamp(var(--pc-space-md), 4.5vw, calc(var(--pc-space-2xl) + var(--pc-space-sm)));
 }
 
@@ -293,6 +293,7 @@
 }
 .publish-car__photo-slot {
   aspect-ratio: 16 / 9;
+  position: relative;
   border-radius: var(--pc-radius-md);
   border: 0.046875rem dashed var(--pc-bd-200);
   background: var(--pc-bg-page);
@@ -305,6 +306,11 @@
   overflow: hidden;
   transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease;
 }
+
+.publish-car__photo-slot--filled {
+  border-style: solid;
+  border-color: transparent;
+}
 .publish-car__photo-slot img {
   width: 100%;
   height: 100%;
@@ -315,6 +321,31 @@
   border-color: var(--pc-brand);
   transform: translateY(-.09375rem);
   box-shadow: 0 0.5625rem 1.125rem rgba(2, 132, 199, 0.2);
+}
+
+.publish-car__photo-remove {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 9999px;
+  border: none;
+  background: rgba(15, 23, 42, 0.7);
+  color: #f8fafc;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.publish-car__photo-remove:hover,
+.publish-car__photo-remove:focus-visible {
+  background: rgba(2, 132, 199, 0.85);
+  transform: scale(1.05);
+  outline: none;
 }
 
 /* ========== 7) ERRORES Y MENSAJES ========== */

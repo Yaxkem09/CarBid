@@ -70,27 +70,29 @@ function PhotoGrid({ images = [], onRemove }) {
     <div className="publish-car__photo-grid">
       {[0, 1, 2, 3].map((index) => {
         const image = images[index];
-        const isFilled = Boolean(image);
-        const slotProps =
-          isFilled && typeof onRemove === 'function'
-            ? {
-                role: 'button',
-                tabIndex: 0,
-                onClick: () => onRemove(index),
-                onKeyDown: (event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    onRemove(index);
-                  }
-                },
-                title: 'Haz clic o presiona Enter para eliminar esta foto',
-              }
-            : {};
-
         return (
-          <div key={index} className="publish-car__photo-slot" {...slotProps}>
-            {isFilled ? (
-              <img src={image} alt={`foto-${index}`} />
+          <div
+            key={index}
+            className={`publish-car__photo-slot${image ? ' publish-car__photo-slot--filled' : ''}`}
+          >
+            {image ? (
+              <>
+                <img src={image} alt={`Foto ${index + 1}`} />
+                {typeof onRemove === 'function' && (
+                  <button
+                    type="button"
+                    className="publish-car__photo-remove"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      onRemove(index);
+                    }}
+                    aria-label={`Eliminar foto ${index + 1}`}
+                  >
+                    x
+                  </button>
+                )}
+              </>
             ) : (
               <span>+ Foto {index + 1}</span>
             )}
@@ -136,9 +138,6 @@ function PreviewCard({ data, photos = [] }) {
           <p className="publish-car__preview-note">{description}</p>
         )}
       </div>
-      <button type="button" className="publish-car__preview-button">
-        Simular publicacion
-      </button>
     </aside>
   );
 }
@@ -311,6 +310,7 @@ const PublicarCarro = () => {
 
   const handlePhotoDrop = (event) => {
     event.preventDefault();
+    event.stopPropagation();
     const success = ingestFiles(event.dataTransfer?.files);
     if (!success) {
       const message =
@@ -325,6 +325,10 @@ const PublicarCarro = () => {
 
   const handlePhotoDragOver = (event) => {
     event.preventDefault();
+    event.stopPropagation();
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'copy';
+    }
   };
 
   const handlePhotoRemove = (index) => {
