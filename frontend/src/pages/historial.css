@@ -116,6 +116,27 @@
   text-align: center;
 }
 
+.historial-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.2125rem 0.5rem;
+  border-radius: 999rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  background-color: rgba(15, 23, 42, 0.06);
+}
+
+.historial-status--active {
+  background-color: rgba(16, 185, 129, 0.18);
+  color: #047857;
+}
+
+.historial-status--finished {
+  background-color: rgba(248, 113, 113, 0.18);
+  color: #b91c1c;
+}
+
 .historial-table__empty {
   padding: clamp(1.125rem, 3vw, 1.5rem);
   text-align: center;
