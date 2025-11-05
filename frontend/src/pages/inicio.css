@@ -297,7 +297,7 @@
 .inicio-page__content {
   display: grid;
   gap: clamp(1.5rem, 3vw, 2.25rem);
-  grid-template-columns: minmax(clamp(10.125rem, 21vw, 14.25rem), 1fr) minmax(0, 2.6fr);
+  grid-template-columns: minmax(clamp(10.125rem, 21vw, 14.25rem), 1fr) minmax(0, 3.25fr);
   align-items: start;
 }
 
