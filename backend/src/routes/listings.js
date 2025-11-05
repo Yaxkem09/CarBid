@@ -302,6 +302,61 @@ async function fetchImagesMap(listingIds) {
   }, new Map());
 }
 
+function buildUniqueList(rows, key) {
+  if (!Array.isArray(rows)) {
+    return [];
+  }
+
+  const seen = new Set();
+  const results = [];
+
+  rows.forEach((row) => {
+    const rawValue = row?.[key];
+    if (typeof rawValue !== 'string') {
+      return;
+    }
+    const trimmed = rawValue.trim();
+    if (!trimmed) {
+      return;
+    }
+    const normalized = trimmed.toLocaleLowerCase('es-GT');
+    if (!seen.has(normalized)) {
+      seen.add(normalized);
+      results.push(trimmed);
+    }
+  });
+
+  return results;
+}
+
+router.get('/options', auth, async (_req, res) => {
+  try {
+    const [brandRows, modelRows] = await Promise.all([
+      Auction.findAll({
+        attributes: [[sequelize.fn('DISTINCT', sequelize.col('brand')), 'brand']],
+        order: [[sequelize.fn('LOWER', sequelize.col('brand')), 'ASC']],
+        raw: true,
+      }),
+      Auction.findAll({
+        attributes: [[sequelize.fn('DISTINCT', sequelize.col('model')), 'model']],
+        order: [[sequelize.fn('LOWER', sequelize.col('model')), 'ASC']],
+        raw: true,
+      }),
+    ]);
+
+    const brands = buildUniqueList(brandRows, 'brand');
+    const models = buildUniqueList(modelRows, 'model');
+
+    res.json({
+      brands,
+      models,
+    });
+  } catch (error) {
+    console.error('Failed to fetch listing options:', error);
+    res.status(500).json({ message: 'No se pudieron obtener las opciones disponibles.' });
+  }
+});
+
 router.get('/', auth, async (req, res) => {
   try {
     const mine = req.query.mine === '1' || req.query.mine === 'true';

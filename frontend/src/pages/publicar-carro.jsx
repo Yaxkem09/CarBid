@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
-import { vehicleBrands, vehicleModels, vehicleColors, vehicleYears } from '../constants/vehicleOptions';
+import { vehicleColors, vehicleYears } from '../constants/vehicleOptions';
+import { useVehicleOptions } from '../hooks/useVehicleOptions';
 import './publicar-carro.css';
 
 const initialState = {
@@ -165,7 +166,18 @@ function PreviewCard({ data, photos = [] }) {
 }
 
 const getValidationError = (data) => {
-  const { title, brand, model, color, year, kilometraje, basePrice, minIncrement, endsAt } = data;
+  const {
+    title,
+    brand,
+    model,
+    color,
+    year,
+    kilometraje,
+    basePrice,
+    minIncrement,
+    endsAt,
+    description,
+  } = data;
 
   if (!title.trim()) {
     return 'Agrega un titulo descriptivo para la subasta.';
@@ -211,8 +223,30 @@ const getValidationError = (data) => {
   if (endsAtDate <= new Date()) {
     return 'La subasta debe cerrar en una fecha futura.';
   }
+  const descriptionValue =
+    typeof description === 'string' ? description.trim() : String(description ?? '').trim();
+  if (!descriptionValue) {
+    return 'Agrega una descripcion detallada del vehiculo.';
+  }
 
   return '';
+};
+
+const findMatchingOption = (options, value) => {
+  if (!Array.isArray(options) || !options.length || typeof value !== 'string') {
+    return '';
+  }
+
+  const trimmedValue = value.trim();
+  if (!trimmedValue) {
+    return '';
+  }
+
+  const match = options.find(
+    (option) => option.localeCompare(trimmedValue, 'es', { sensitivity: 'base' }) === 0,
+  );
+
+  return match ?? '';
 };
 
 const PublicarCarro = () => {
@@ -224,16 +258,7 @@ const PublicarCarro = () => {
   const [photoError, setPhotoError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-
-  const sortedBrands = useMemo(
-    () => [...vehicleBrands].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' })),
-    [],
-  );
-
-  const sortedModels = useMemo(
-    () => [...vehicleModels].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' })),
-    [],
-  );
+  const { brands: brandOptions, models: modelOptions } = useVehicleOptions();
 
   const sortedColors = useMemo(
     () => [...vehicleColors].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' })),
@@ -241,13 +266,13 @@ const PublicarCarro = () => {
   );
 
   const brandSelectValue = useMemo(
-    () => (vehicleBrands.includes(formData.brand) ? formData.brand : ''),
-    [formData.brand],
+    () => findMatchingOption(brandOptions, formData.brand),
+    [brandOptions, formData.brand],
   );
 
   const modelSelectValue = useMemo(
-    () => (vehicleModels.includes(formData.model) ? formData.model : ''),
-    [formData.model],
+    () => findMatchingOption(modelOptions, formData.model),
+    [modelOptions, formData.model],
   );
 
   const colorSelectValue = useMemo(
@@ -386,8 +411,18 @@ const PublicarCarro = () => {
   };
 
   const handleChange = (event) => {
-    const { name, value } = event.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    const { name, value, dataset } = event.target;
+    let nextValue = value;
+
+    if (
+      dataset.capitalize === 'first' &&
+      typeof nextValue === 'string' &&
+      nextValue.length > 0
+    ) {
+      nextValue = nextValue.charAt(0).toLocaleUpperCase('es-GT') + nextValue.slice(1);
+    }
+
+    setFormData((prev) => ({ ...prev, [name]: nextValue }));
     if (error) {
       setError('');
     }
@@ -488,7 +523,7 @@ const PublicarCarro = () => {
                       className="publish-car__select"
                     >
                       <option value="">Selecciona una marca</option>
-                      {sortedBrands.map((brand) => (
+                      {brandOptions.map((brand) => (
                         <option key={brand} value={brand}>
                           {brand}
                         </option>
@@ -501,6 +536,7 @@ const PublicarCarro = () => {
                     value={formData.brand}
                     onChange={handleChange}
                     placeholder="O escribe una marca personalizada"
+                    data-capitalize="first"
                     className="publish-car__input publish-car__input--secondary"
                   />
                 </Field>
@@ -513,7 +549,7 @@ const PublicarCarro = () => {
                       className="publish-car__select"
                     >
                       <option value="">Selecciona un modelo</option>
-                      {sortedModels.map((modelName) => (
+                      {modelOptions.map((modelName) => (
                         <option key={modelName} value={modelName}>
                           {modelName}
                         </option>
@@ -526,6 +562,7 @@ const PublicarCarro = () => {
                     value={formData.model}
                     onChange={handleChange}
                     placeholder="O escribe un modelo personalizado"
+                    data-capitalize="first"
                     className="publish-car__input publish-car__input--secondary"
                   />
                 </Field>

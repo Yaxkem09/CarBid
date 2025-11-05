@@ -1,9 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import { useVehicleOptions } from '../hooks/useVehicleOptions';
 import {
-  vehicleBrands,
-  vehicleModels,
   vehicleColors,
   vehicleYears,
   priceRange,
@@ -30,6 +29,7 @@ const Inicio = () => {
   const [searchPerformed, setSearchPerformed] = useState(false);
   const navigate = useNavigate();
   const socketRef = useRef(null);
+  const { brands: brandOptions, models: modelOptions } = useVehicleOptions();
 
   const currencyFormatter = useMemo(
     () =>
@@ -38,16 +38,6 @@ const Inicio = () => {
         currency: 'GTQ',
         maximumFractionDigits: 0,
       }),
-    [],
-  );
-
-  const sortedBrands = useMemo(
-    () => [...vehicleBrands].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' })),
-    [],
-  );
-
-  const sortedModels = useMemo(
-    () => [...vehicleModels].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' })),
     [],
   );
 
@@ -355,7 +345,7 @@ const Inicio = () => {
                   className="inicio-select"
                 >
                   <option value="">Todas las marcas</option>
-                  {sortedBrands.map((brand) => (
+                  {brandOptions.map((brand) => (
                     <option key={brand} value={brand}>
                       {brand}
                     </option>
@@ -373,7 +363,7 @@ const Inicio = () => {
                   className="inicio-select"
                 >
                   <option value="">Todos los modelos</option>
-                  {sortedModels.map((model) => (
+                  {modelOptions.map((model) => (
                     <option key={model} value={model}>
                       {model}
                     </option>
