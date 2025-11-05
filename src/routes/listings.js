@@ -249,6 +249,9 @@ function mapListing(row, images = [], viewerId = null, extras = {}) {
       : null;
   const basePriceRaw = row.base_price ?? row.basePrice;
   const minIncrementRaw = row.min_increment ?? row.minIncrement;
+  const mileageRaw = row.kilometraje ?? row.mileage ?? null;
+  const kilometraje =
+    mileageRaw !== null && mileageRaw !== undefined ? Number(mileageRaw) : null;
 
   return {
     id: row.id,
@@ -258,6 +261,7 @@ function mapListing(row, images = [], viewerId = null, extras = {}) {
     model: row.model,
     color: row.color ?? null,
     year: row.year,
+    kilometraje,
     basePrice: basePriceRaw !== undefined && basePriceRaw !== null ? Number(basePriceRaw) : null,
     minIncrement: minIncrementRaw !== undefined && minIncrementRaw !== null ? Number(minIncrementRaw) : null,
     description: row.description ?? '',
@@ -297,6 +301,61 @@ async function fetchImagesMap(listingIds) {
     return map;
   }, new Map());
 }
+
+function buildUniqueList(rows, key) {
+  if (!Array.isArray(rows)) {
+    return [];
+  }
+
+  const seen = new Set();
+  const results = [];
+
+  rows.forEach((row) => {
+    const rawValue = row?.[key];
+    if (typeof rawValue !== 'string') {
+      return;
+    }
+    const trimmed = rawValue.trim();
+    if (!trimmed) {
+      return;
+    }
+    const normalized = trimmed.toLocaleLowerCase('es-GT');
+    if (!seen.has(normalized)) {
+      seen.add(normalized);
+      results.push(trimmed);
+    }
+  });
+
+  return results;
+}
+
+router.get('/options', auth, async (_req, res) => {
+  try {
+    const [brandRows, modelRows] = await Promise.all([
+      Auction.findAll({
+        attributes: [[sequelize.fn('DISTINCT', sequelize.col('brand')), 'brand']],
+        order: [[sequelize.fn('LOWER', sequelize.col('brand')), 'ASC']],
+        raw: true,
+      }),
+      Auction.findAll({
+        attributes: [[sequelize.fn('DISTINCT', sequelize.col('model')), 'model']],
+        order: [[sequelize.fn('LOWER', sequelize.col('model')), 'ASC']],
+        raw: true,
+      }),
+    ]);
+
+    const brands = buildUniqueList(brandRows, 'brand');
+    const models = buildUniqueList(modelRows, 'model');
+
+    res.json({
+      brands,
+      models,
+    });
+  } catch (error) {
+    console.error('Failed to fetch listing options:', error);
+    res.status(500).json({ message: 'No se pudieron obtener las opciones disponibles.' });
+  }
+});
 
 router.get('/', auth, async (req, res) => {
   try {
@@ -486,25 +545,50 @@ router.post('/', auth, handleImageUpload, async (req, res) => {
   const model = readField('model');
   const colorValue = readField('color');
   const yearValue = readField('year');
+  const kilometrajeValue = readField('kilometraje');
   const basePriceValue = readField('basePrice');
   const minIncrementValue = readField('minIncrement');
   const description = readField('description');
   const endsAtValue = readField('endsAt');
 
-  if (!title || !brand || !model || !colorValue || !yearValue || !basePriceValue || !minIncrementValue || !endsAtValue) {
+  if (
+    !title ||
+    !brand ||
+    !model ||
+    !colorValue ||
+    !yearValue ||
+    !kilometrajeValue ||
+    !basePriceValue ||
+    !minIncrementValue ||
+    !endsAtValue
+  ) {
     return rejectWithCleanup(
       400,
-      'Campos obligatorios: titulo, marca, modelo, color, ano, precio base, incremento minimo y fecha de cierre.',
+      'Campos obligatorios: titulo, marca, modelo, color, ano, kilometraje, precio base, incremento minimo y fecha de cierre.',
     );
   }
 
   const numericYear = Number(yearValue);
+  const numericKilometraje = Number.parseInt(kilometrajeValue, 10);
   const numericBasePrice = Number(basePriceValue);
   const numericMinIncrement = Number(minIncrementValue);
   const currentYearLimit = new Date().getFullYear() + 1;
 
   if (!Number.isInteger(numericYear) || numericYear < 1900 || numericYear > currentYearLimit) {
     return rejectWithCleanup(400, `El ano debe estar entre 1900 y ${currentYearLimit}.`);
+  }
+
+  const kilometrajeIsValidInteger = /^\d+$/.test(kilometrajeValue);
+  if (
+    !kilometrajeIsValidInteger ||
+    Number.isNaN(numericKilometraje) ||
+    numericKilometraje < 0 ||
+    numericKilometraje > 2000000
+  ) {
+    return rejectWithCleanup(
+      400,
+      'El kilometraje debe ser un entero en kilometros entre 0 y 2,000,000.',
+    );
   }
 
   if (!Number.isFinite(numericBasePrice) || numericBasePrice <= 0) {
@@ -550,6 +634,7 @@ router.post('/', auth, handleImageUpload, async (req, res) => {
           model,
           color: colorValue,
           year: numericYear,
+          kilometraje: numericKilometraje,
           basePrice: numericBasePrice,
           minIncrement: numericMinIncrement,
           description: description || '',
