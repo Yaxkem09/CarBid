@@ -82,6 +82,7 @@
   border-radius: calc(var(--app-card-radius) - 0.25rem);
   box-sizing: border-box;
   transition: background 0.3s ease;
+  padding: clamp(0.4rem, 1vw, 0.6rem);
 }
 
 .inicio-card__media span {
@@ -95,6 +96,8 @@
   letter-spacing: 0.08em;
   pointer-events: none;
   user-select: none;
+  border-radius: clamp(0.45rem, 1.1vw, 0.75rem);
+  background: rgba(255, 255, 255, 0.65);
 }
 
 .inicio-card__media-img {
@@ -103,6 +106,7 @@
   object-fit: cover;
   object-position: center;
   transition: transform 0.6s ease, filter 0.6s ease;
+  border-radius: clamp(0.45rem, 1.1vw, 0.75rem);
 }
 
 .inicio-card__media-img:hover {
