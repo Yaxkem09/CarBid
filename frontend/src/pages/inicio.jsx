@@ -11,34 +11,13 @@ import { connectSocket } from '../services/socket';
 import './inicio.css';
 
 const RESULTS_PER_PAGE = 4;
-const CARD_MEDIA_ASPECT_RATIO = 16 / 15;
-const CARD_MEDIA_FIT_THRESHOLD = 0.35;
 
 const ResponsiveCardMedia = ({ src, alt, fallbackLabel }) => {
-  const [fitMode, setFitMode] = useState('cover');
   const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
-    setFitMode('cover');
     setHasError(false);
   }, [src]);
-
-  const handleImageLoad = useCallback((event) => {
-    const { naturalWidth, naturalHeight } = event.currentTarget;
-    if (!naturalWidth || !naturalHeight) {
-      setFitMode('contain');
-      return;
-    }
-
-    const ratio = naturalWidth / naturalHeight;
-    if (!Number.isFinite(ratio)) {
-      setFitMode('contain');
-      return;
-    }
-
-    const ratioDelta = Math.abs(ratio - CARD_MEDIA_ASPECT_RATIO) / CARD_MEDIA_ASPECT_RATIO;
-    setFitMode(ratioDelta > CARD_MEDIA_FIT_THRESHOLD ? 'contain' : 'cover');
-  }, []);
 
   const handleImageError = useCallback(() => {
     setHasError(true);
@@ -53,13 +32,12 @@ const ResponsiveCardMedia = ({ src, alt, fallbackLabel }) => {
   }
 
   return (
-    <div className={`inicio-card__media ${fitMode === 'contain' ? 'inicio-card__media--contain' : ''}`}>
+    <div className="inicio-card__media">
       <img
         src={src}
         alt={alt}
         loading="lazy"
         className="inicio-card__media-img"
-        onLoad={handleImageLoad}
         onError={handleImageError}
       />
     </div>
@@ -153,6 +131,11 @@ const Inicio = () => {
     const start = (searchPage - 1) * RESULTS_PER_PAGE;
     return searchResults.slice(start, start + RESULTS_PER_PAGE);
   }, [searchResults, searchPage]);
+
+  const searchPlaceholderItems = useMemo(() => {
+    const missing = RESULTS_PER_PAGE - paginatedSearchResults.length;
+    return missing > 0 ? Array.from({ length: missing }) : [];
+  }, [paginatedSearchResults.length]);
 
   const applySummaryToCollections = useCallback(
     (summary) => {
@@ -534,11 +517,11 @@ const Inicio = () => {
             )}
             {!searching && !searchError && searchResults.length > 0 && (
               <>
-                <div className="inicio-page__grid">
-                  {paginatedSearchResults.map((listing) => {
-                    const imageSrc = buildImageUrl(listing.images?.[0]);
-                    const listingLabel = [listing.brand, listing.model].filter(Boolean).join(' ') || listing.title;
-                    const kilometrajeNumber = Number(listing.kilometraje);
+                  <div className="inicio-page__grid">
+                    {paginatedSearchResults.map((listing) => {
+                      const imageSrc = buildImageUrl(listing.images?.[0]);
+                      const listingLabel = [listing.brand, listing.model].filter(Boolean).join(' ') || listing.title;
+                      const kilometrajeNumber = Number(listing.kilometraje);
                     const kilometrajeLabel = Number.isFinite(kilometrajeNumber)
                       ? `${kilometrajeNumber.toLocaleString('es-GT')} km`
                       : null;
@@ -590,10 +573,17 @@ const Inicio = () => {
                             Ver detalles
                           </button>
                         </div>
-                      </article>
-                    );
-                  })}
-                </div>
+                        </article>
+                      );
+                    })}
+                    {searchPlaceholderItems.map((_, index) => (
+                      <article
+                        key={`search-placeholder-${index}`}
+                        className="inicio-card inicio-card--placeholder"
+                        aria-hidden="true"
+                      />
+                    ))}
+                  </div>
                 {searchResults.length > RESULTS_PER_PAGE && (
                   <div className="inicio-pagination" role="navigation" aria-label="Paginacion de resultados">
                     <button
