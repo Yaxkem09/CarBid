@@ -45,7 +45,7 @@
   --pc-control-h: 2.25rem;
   --pc-shadow-card: 0 0.84375rem 1.875rem rgba(15, 23, 42, 0.08);
   --pc-shadow-card-lg: 0 1.03125rem 2.25rem rgba(15, 23, 42, 0.12);
-  --pc-max-width: min(100%, 60rem);
+  --pc-max-width: min(100%, 70rem);
 
   min-height: 75vh;
   background: linear-gradient(180deg, var(--pc-bg-page) 0%, rgba(241, 245, 249, 0.4) 40%, #e0e7ff 100%);
@@ -88,10 +88,15 @@
   display: grid;
   gap: clamp(var(--pc-space-lg), 2.25vw, var(--pc-space-2xl));
 }
+.publish-car__layout > * {
+  width: calc(100% / 1.1); /* compensate for scale so elements keep their grid footprint */
+  transform: scale(1.1);
+  transform-origin: top center;
+}
 @media (min-width: 48rem) {
   /* Two-column layout keeps the preview sticky alongside the form */
   .publish-car__layout {
-    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 2.6fr) minmax(0, 1.4fr);
     align-items: start;
   }
 }
@@ -108,7 +113,7 @@
   transition: transform .3s ease, box-shadow .3s ease;
 }
 .publish-car__form-card:hover {
-  transform: translateY(-.1875rem);
+  transform: scale(1.1) translateY(-.1875rem);
   box-shadow: var(--pc-shadow-card-lg);
 }
 @media (max-width: 28.125rem) {
@@ -159,8 +164,18 @@
   column-gap: calc(var(--pc-space-xl) * 0.75);
 }
 .publish-car__grid--three {
-  grid-template-columns: repeat(auto-fit, minmax(12.1875rem, 1fr));
-  align-items: start; /* evita “bailes” verticales */
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start; /* evita "bailes" verticales */
+}
+@media (min-width: 40rem) {
+  .publish-car__grid--three {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (min-width: 64rem) {
+  .publish-car__grid--three {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 /* ========== 5) CONTROLES (inputs/select/textarea/botones) ========== */
@@ -257,7 +272,12 @@
 .publish-car__input--secondary {
   margin-top: var(--pc-space-xs);
   margin-bottom: 0;
-  font-size: 0.675rem;
+  font-size: 0.765rem;
+  color: var(--pc-text-700);
+}
+.publish-car__input--secondary::placeholder {
+  color: var(--pc-text-500);
+  opacity: 0.85;
 }
 
 /* ========== 6) SUBIDA DE FOTOS ========== */
@@ -424,7 +444,7 @@
   transition: transform .3s ease, box-shadow .3s ease;
 }
 .publish-car__preview-card:hover {
-  transform: translateY(-.1875rem);
+  transform: scale(1.1) translateY(-.1875rem);
   box-shadow: 0 1.3125rem 2.625rem rgba(15, 23, 42, 0.14);
 }
 .publish-car__preview-title {
