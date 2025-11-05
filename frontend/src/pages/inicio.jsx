@@ -302,6 +302,10 @@ const Inicio = () => {
                 listing.color,
               ].filter(Boolean);
               const descriptor = descriptorParts.join(' · ');
+              const kilometrajeNumber = Number(listing.kilometraje);
+              const kilometrajeLabel = Number.isFinite(kilometrajeNumber)
+                ? `${kilometrajeNumber.toLocaleString('es-GT')} km`
+                : null;
               const imageSrc = buildImageUrl(listing.images?.[0]);
 
               return (
@@ -316,6 +320,11 @@ const Inicio = () => {
                   <div className="inicio-recommended-card__content">
                     <h3>{listing.title}</h3>
                     <p>{descriptor || 'Subasta destacada'}</p>
+                    {kilometrajeLabel && (
+                      <p className="inicio-recommended-card__meta">
+                        Kilometraje: {kilometrajeLabel}
+                      </p>
+                    )}
                     <p className="inicio-recommended-card__meta">
                       Oferta más alta: {currencyFormatter.format(highestBid)}
                     </p>
@@ -473,6 +482,10 @@ const Inicio = () => {
                     listing.color,
                   ].filter(Boolean);
                   const descriptor = descriptorParts.join(' · ');
+                  const kilometrajeNumber = Number(listing.kilometraje);
+                  const kilometrajeLabel = Number.isFinite(kilometrajeNumber)
+                    ? `${kilometrajeNumber.toLocaleString('es-GT')} km`
+                    : null;
 
                   return (
                     <article key={listing.id} className="inicio-card">
@@ -485,6 +498,11 @@ const Inicio = () => {
                       </div>
                       <h3>{listing.title}</h3>
                       <p>{descriptor || listingLabel}</p>
+                      {kilometrajeLabel && (
+                        <p>
+                          Kilometraje: {kilometrajeLabel}
+                        </p>
+                      )}
                       <p>Precio base: {currencyFormatter.format(listing.basePrice)}</p>
                       <p>Oferta más alta: {currencyFormatter.format(listing.highestBid ?? listing.basePrice)}</p>
                       <button type="button" onClick={() => handleViewDetails(listing.id)}>

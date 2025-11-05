@@ -83,6 +83,10 @@ export const Auction = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
+    kilometraje: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: false,
+    },
     basePrice: {
       field: 'base_price',
       type: DataTypes.DECIMAL(12, 2),

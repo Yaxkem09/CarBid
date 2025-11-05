@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS auctions (
   model VARCHAR(120) NOT NULL,
   color VARCHAR(80),
   year SMALLINT NOT NULL,
+  kilometraje INT UNSIGNED NOT NULL DEFAULT 0,
   base_price DECIMAL(12,2) NOT NULL,
   min_increment DECIMAL(12,2) NOT NULL DEFAULT 1.00,
   description TEXT,

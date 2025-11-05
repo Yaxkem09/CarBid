@@ -10,6 +10,7 @@ const initialState = {
   model: '',
   color: '',
   year: '',
+  kilometraje: '',
   basePrice: '',
   minIncrement: '',
   description: '',
@@ -104,12 +105,30 @@ function PhotoGrid({ images = [], onRemove }) {
 }
 
 function PreviewCard({ data, photos = [] }) {
-  const { title, brand, model, color, year, basePrice, minIncrement, endsAt, description } = data;
+  const {
+    title,
+    brand,
+    model,
+    color,
+    year,
+    kilometraje,
+    basePrice,
+    minIncrement,
+    endsAt,
+    description,
+  } = data;
 
   const price = formatCurrency(basePrice) || 'Q0.00';
   const increment = formatCurrency(minIncrement) || 'Q0.00';
   const endsAtText = formatDateTime(endsAt) || 'dd/mm/aa hh:mm';
   const coverPhoto = photos[0] ?? null;
+  const mileageNumber = Number.parseInt(kilometraje, 10);
+  const mileageText =
+    Number.isFinite(mileageNumber) && !Number.isNaN(mileageNumber)
+      ? `${mileageNumber.toLocaleString('es-GT')} km`
+      : 'Kilometraje';
+  const hasKilometraje =
+    kilometraje !== undefined && kilometraje !== null && String(kilometraje).trim() !== '';
 
   return (
     <aside className="publish-car__preview-card">
@@ -131,6 +150,9 @@ function PreviewCard({ data, photos = [] }) {
           {year ? ` - ${year}` : '- Año'}
         </p>
         <p className="publish-car__preview-meta">Color: <strong>{color || 'Color'}</strong></p>
+        <p className="publish-car__preview-meta">
+          Kilometraje: <strong>{hasKilometraje ? mileageText : 'Kilometraje'}</strong>
+        </p>
         <p className="publish-car__preview-meta">Precio base: <strong>{price}</strong></p>
         <p className="publish-car__preview-meta">Incremento minimo: <strong>{increment}</strong></p>
         <p className="publish-car__preview-meta">Cierre: {endsAtText}</p>
@@ -143,7 +165,7 @@ function PreviewCard({ data, photos = [] }) {
 }
 
 const getValidationError = (data) => {
-  const { title, brand, model, color, year, basePrice, minIncrement, endsAt } = data;
+  const { title, brand, model, color, year, kilometraje, basePrice, minIncrement, endsAt } = data;
 
   if (!title.trim()) {
     return 'Agrega un titulo descriptivo para la subasta.';
@@ -154,6 +176,17 @@ const getValidationError = (data) => {
   }
   if (normalizedColor.length > 80) {
     return 'El color debe tener maximo 80 caracteres.';
+  }
+  const kilometrajeValue = typeof kilometraje === 'string' ? kilometraje.trim() : String(kilometraje ?? '').trim();
+  if (!kilometrajeValue) {
+    return 'Ingresa el kilometraje actual del vehiculo.';
+  }
+  if (!/^\d+$/.test(kilometrajeValue)) {
+    return 'El kilometraje solo debe contener numeros enteros.';
+  }
+  const kilometrajeNumber = Number.parseInt(kilometrajeValue, 10);
+  if (!Number.isInteger(kilometrajeNumber) || kilometrajeNumber < 0 || kilometrajeNumber > 2000000) {
+    return 'El kilometraje debe estar entre 0 y 2,000,000 km.';
   }
   const yearNumber = Number(year);
   const currentYearLimit = new Date().getFullYear() + 1;
@@ -382,6 +415,7 @@ const PublicarCarro = () => {
     const sanitizedDescription = formData.description.trim();
     const sanitizedEndsAt = formData.endsAt;
     const sanitizedYear = Number(formData.year);
+    const sanitizedKilometraje = Number.parseInt(String(formData.kilometraje).trim(), 10);
     const sanitizedBasePrice = Number(formData.basePrice);
     const sanitizedMinIncrement = Number(formData.minIncrement);
 
@@ -391,6 +425,7 @@ const PublicarCarro = () => {
     formPayload.append('model', sanitizedModel);
     formPayload.append('color', sanitizedColor);
     formPayload.append('year', String(sanitizedYear));
+    formPayload.append('kilometraje', String(sanitizedKilometraje));
     formPayload.append('basePrice', String(sanitizedBasePrice));
     formPayload.append('minIncrement', String(sanitizedMinIncrement));
     formPayload.append('description', sanitizedDescription);
@@ -510,14 +545,6 @@ const PublicarCarro = () => {
                       ))}
                     </select>
                   </div>
-                  <input
-                    type="text"
-                    name="color"
-                    value={formData.color}
-                    onChange={handleChange}
-                    placeholder="O describe otro color"
-                    className="publish-car__input publish-car__input--secondary"
-                  />
                 </Field>
                 <Field label="Año">
                   <div className="publish-car__select-wrapper">
@@ -544,6 +571,19 @@ const PublicarCarro = () => {
                     onChange={handleChange}
                     placeholder="O escribe manualmente"
                     className="publish-car__input publish-car__input--secondary"
+                  />
+                </Field>
+                <Field label="Kilometraje (km)">
+                  <input
+                    type="number"
+                    name="kilometraje"
+                    min="0"
+                    max="2000000"
+                    step="1"
+                    value={formData.kilometraje}
+                    onChange={handleChange}
+                    placeholder="Ej. 65000"
+                    className="publish-car__input"
                   />
                 </Field>
               </div>
