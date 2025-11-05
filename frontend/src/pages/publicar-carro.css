@@ -45,12 +45,15 @@
   --pc-control-h: 2.25rem;
   --pc-shadow-card: 0 0.84375rem 1.875rem rgba(15, 23, 42, 0.08);
   --pc-shadow-card-lg: 0 1.03125rem 2.25rem rgba(15, 23, 42, 0.12);
-  --pc-max-width: min(100%, 60rem);
+  --pc-max-width: min(100%, 70rem);
 
   min-height: 75vh;
   background: linear-gradient(180deg, var(--pc-bg-page) 0%, rgba(241, 245, 249, 0.4) 40%, #e0e7ff 100%);
   padding: clamp(var(--pc-space-sm), 2vw, var(--pc-space-lg))
     clamp(var(--pc-space-md), 4.5vw, calc(var(--pc-space-2xl) + var(--pc-space-sm)));
+  padding-block-start: clamp(0rem, 1vw, var(--pc-space-2xs));
+  padding-block-end: clamp(var(--pc-space-xl), 4vw, var(--pc-space-2xl));
+  margin-block-start: -2rem;
 }
 
 /* Reseteo suave en scope */
@@ -85,11 +88,17 @@
 .publish-car__layout {
   display: grid;
   gap: clamp(var(--pc-space-lg), 2.25vw, var(--pc-space-2xl));
+  padding-block-end: clamp(var(--pc-space-xl), 5vw, calc(var(--pc-space-2xl) + var(--pc-space-md)));
+}
+.publish-car__layout > * {
+  width: calc(100% / 1.1); /* compensate for scale so elements keep their grid footprint */
+  transform: scale(1.1);
+  transform-origin: top center;
 }
 @media (min-width: 48rem) {
   /* Two-column layout keeps the preview sticky alongside the form */
   .publish-car__layout {
-    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 2.6fr) minmax(0, 1.4fr);
     align-items: start;
   }
 }
@@ -105,10 +114,7 @@
   gap: clamp(var(--pc-space-lg), 2.25vw, var(--pc-space-xl));
   transition: transform .3s ease, box-shadow .3s ease;
 }
-.publish-car__form-card:hover {
-  transform: translateY(-.1875rem);
-  box-shadow: var(--pc-shadow-card-lg);
-}
+.publish-car__form-card:hover { box-shadow: var(--pc-shadow-card-lg); }
 @media (max-width: 28.125rem) {
   .publish-car__form-card { padding: var(--pc-space-lg); }
 }
@@ -157,8 +163,18 @@
   column-gap: calc(var(--pc-space-xl) * 0.75);
 }
 .publish-car__grid--three {
-  grid-template-columns: repeat(auto-fit, minmax(12.1875rem, 1fr));
-  align-items: start; /* evita “bailes” verticales */
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start; /* evita "bailes" verticales */
+}
+@media (min-width: 40rem) {
+  .publish-car__grid--three {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (min-width: 64rem) {
+  .publish-car__grid--three {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 /* ========== 5) CONTROLES (inputs/select/textarea/botones) ========== */
@@ -255,7 +271,12 @@
 .publish-car__input--secondary {
   margin-top: var(--pc-space-xs);
   margin-bottom: 0;
-  font-size: 0.675rem;
+  font-size: 0.765rem;
+  color: var(--pc-text-700);
+}
+.publish-car__input--secondary::placeholder {
+  color: var(--pc-text-500);
+  opacity: 0.85;
 }
 
 /* ========== 6) SUBIDA DE FOTOS ========== */
@@ -421,10 +442,7 @@
   top: calc(var(--pc-space-xl) + var(--pc-space-sm));
   transition: transform .3s ease, box-shadow .3s ease;
 }
-.publish-car__preview-card:hover {
-  transform: translateY(-.1875rem);
-  box-shadow: 0 1.3125rem 2.625rem rgba(15, 23, 42, 0.14);
-}
+.publish-car__preview-card:hover { box-shadow: 0 1.3125rem 2.625rem rgba(15, 23, 42, 0.14); }
 .publish-car__preview-title {
   margin: 0;
   font-size: 0.75rem;

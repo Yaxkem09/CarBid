@@ -11,6 +11,8 @@ const LINKS = [
 ];
 
 const ENDING_SOON_THRESHOLD_MINUTES = 30;
+const ENDING_CRITICAL_THRESHOLD_MINUTES = 1;
+const OWNER_ENDED_LOOKBACK_DAYS = 7;
 
 function safeDate(value) {
   if (!value) return null;
@@ -60,6 +62,7 @@ function formatRemainingDuration(milliseconds) {
 function createNotificationsFromBids(bids = [], now = new Date()) {
   const nowMs = now.getTime();
   const thresholdMs = ENDING_SOON_THRESHOLD_MINUTES * 60 * 1000;
+  const criticalMs = ENDING_CRITICAL_THRESHOLD_MINUTES * 60 * 1000;
   const notifications = [];
 
   getLatestBidsPerListing(bids).forEach((bid) => {
@@ -93,6 +96,34 @@ function createNotificationsFromBids(bids = [], now = new Date()) {
       return;
     }
 
+    const rawHighestAmount =
+      bid?.currentHighestBid ?? bid?.highestBid ?? bid?.highestBidAmount ?? null;
+    const parsedHighestAmount =
+      rawHighestAmount !== null && rawHighestAmount !== undefined
+        ? Number(rawHighestAmount)
+        : null;
+    const highestAmount = Number.isFinite(parsedHighestAmount) ? parsedHighestAmount : null;
+    const parsedUserAmount =
+      bid?.amount !== null && bid?.amount !== undefined ? Number(bid.amount) : null;
+    const userAmount = Number.isFinite(parsedUserAmount) ? parsedUserAmount : null;
+
+    if (
+      status === 'active' &&
+      highestAmount !== null &&
+      userAmount !== null &&
+      userAmount < highestAmount
+    ) {
+      const outbidSuffix = highestAmount !== null ? `-${highestAmount}` : '';
+      notifications.push({
+        id: `outbid-${bid.listingId}${outbidSuffix}`,
+        listingId: bid.listingId,
+        type: 'outbid',
+        title: 'Han superado tu oferta',
+        message: `Otro postor supero tu oferta en "${listingTitle}".`,
+        timestamp: now.toISOString(),
+      });
+    }
+
     if (!endsAtDate) return;
 
     const endsAtMs = endsAtDate.getTime();
@@ -108,13 +139,51 @@ function createNotificationsFromBids(bids = [], now = new Date()) {
         timestamp: endsAtDate.toISOString(),
       });
     }
+
+    if (endsAtMs > nowMs && endsAtMs - nowMs <= criticalMs) {
+      notifications.push({
+        id: `ending-critical-${bid.listingId}`,
+        listingId: bid.listingId,
+        type: 'endingCritical',
+        title: 'Último minuto',
+        message: `Queda 1 minuto para que termine "${listingTitle}".`,
+        timestamp: endsAtDate.toISOString(),
+      });
+    }
   });
 
-  return notifications.sort((a, b) => {
-    const aTime = a.timestamp ? new Date(a.timestamp).getTime() : 0;
-    const bTime = b.timestamp ? new Date(b.timestamp).getTime() : 0;
-    return bTime - aTime;
+  return notifications;
+}
+
+function createOwnerNotifications(listings = [], now = new Date()) {
+  const nowMs = now.getTime();
+  const lookbackMs = OWNER_ENDED_LOOKBACK_DAYS * 24 * 60 * 60 * 1000;
+  const notifications = [];
+
+  (Array.isArray(listings) ? listings : []).forEach((listing) => {
+    const status = (listing?.status || '').toLowerCase();
+    if (status !== 'ended') {
+      return;
+    }
+
+    const endsAtDate = safeDate(listing?.endsAt);
+    const endsAtMs = endsAtDate ? endsAtDate.getTime() : null;
+    if (Number.isFinite(endsAtMs) && nowMs - endsAtMs > lookbackMs) {
+      return;
+    }
+
+    const listingTitle = listing?.title || 'tu subasta';
+    notifications.push({
+      id: `owner-ended-${listing.id}`,
+      listingId: listing.id,
+      type: 'ownerEnded',
+      title: 'Tu subasta ha terminado',
+      message: `La subasta "${listingTitle}" ha finalizado.`,
+      timestamp: endsAtDate ? endsAtDate.toISOString() : now.toISOString(),
+    });
   });
+
+  return notifications;
 }
 
 export default function Header() {
@@ -125,7 +194,10 @@ export default function Header() {
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [notificationsError, setNotificationsError] = useState('');
   const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const notificationsWrapperRef = useRef(null);
+  const seenNotificationIdsRef = useRef(new Set());
+  const dismissedNotificationIdsRef = useRef(new Set());
   const notificationsPanelId = 'app-header-notifications-panel';
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef(null);
@@ -179,20 +251,87 @@ export default function Header() {
 
       setNotificationsLoading(true);
       try {
-        const response = await api.get('/api/bids/mine');
+        const normalizeOutcome = (outcome) => {
+          if (outcome.status === 'fulfilled') {
+            return {
+              data: Array.isArray(outcome.value?.data) ? outcome.value.data : [],
+              unauthorized: false,
+              error: null,
+            };
+          }
+
+          const status = outcome.reason?.response?.status;
+          if (status === 401) {
+            return { data: [], unauthorized: true, error: null };
+          }
+
+          return {
+            data: [],
+            unauthorized: false,
+            error: 'No se pudieron cargar todas las notificaciones.',
+          };
+        };
+
+        const results = await Promise.allSettled([
+          api.get('/api/bids/mine'),
+          api.get('/api/listings', { params: { mine: 1 } }),
+        ]);
         if (!alive) return;
 
-        const items = createNotificationsFromBids(response.data ?? []);
-        setNotifications(items);
-        setNotificationsError('');
-      } catch (error) {
-        if (!alive) return;
-        if (error.response?.status === 401) {
+        const [bidsOutcome, listingsOutcome] = results;
+        const bidsInfo = normalizeOutcome(bidsOutcome);
+        const listingsInfo = normalizeOutcome(listingsOutcome);
+
+        if (bidsInfo.unauthorized && listingsInfo.unauthorized) {
           setNotifications([]);
           setNotificationsError('');
-        } else {
-          setNotificationsError('No se pudieron cargar las notificaciones.');
+          setUnreadCount(0);
+          seenNotificationIdsRef.current = new Set();
+          dismissedNotificationIdsRef.current = new Set();
+          return;
         }
+
+        const now = new Date();
+        const bidNotifications = createNotificationsFromBids(bidsInfo.data, now);
+        const ownerNotifications = createOwnerNotifications(listingsInfo.data, now);
+        const allItems = [...bidNotifications, ...ownerNotifications].sort((a, b) => {
+          const aTime = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+          const bTime = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+          return bTime - aTime;
+        });
+        const dismissedIds = dismissedNotificationIdsRef.current;
+        const items = allItems.filter(
+          (notification) => !notification?.id || !dismissedIds.has(notification.id),
+        );
+
+        setNotifications(items);
+        const errorMessage = bidsInfo.error || listingsInfo.error || '';
+        setNotificationsError(errorMessage);
+
+        const currentIds = new Set();
+        items.forEach((notification) => {
+          if (notification?.id) {
+            currentIds.add(notification.id);
+          }
+        });
+
+        const previousSeenIds = seenNotificationIdsRef.current;
+        seenNotificationIdsRef.current = new Set(
+          [...previousSeenIds].filter((id) => currentIds.has(id)),
+        );
+
+        const effectiveSeen = seenNotificationIdsRef.current;
+        const unseenCount = items.reduce((count, notification) => {
+          if (!notification?.id) {
+            return count + 1;
+          }
+          return effectiveSeen.has(notification.id) ? count : count + 1;
+        }, 0);
+
+        setUnreadCount(unseenCount);
+      } catch (error) {
+        if (!alive) return;
+        setNotificationsError('No se pudieron cargar las notificaciones.');
       } finally {
         if (alive) {
           setNotificationsLoading(false);
@@ -236,6 +375,21 @@ export default function Header() {
   }, [notificationsOpen]);
 
   useEffect(() => {
+    if (!notificationsOpen) {
+      return;
+    }
+
+    const seenIds = seenNotificationIdsRef.current;
+    notifications.forEach((notification) => {
+      if (notification?.id) {
+        seenIds.add(notification.id);
+      }
+    });
+
+    setUnreadCount(0);
+  }, [notificationsOpen, notifications]);
+
+  useEffect(() => {
     if (!userMenuOpen) {
       return undefined;
     }
@@ -266,18 +420,32 @@ export default function Header() {
     setNotificationsOpen((prev) => !prev);
   };
 
-  const handleNotificationNavigate = (listingId) => {
+  const handleNotificationNavigate = (notification) => {
+    if (!notification) {
+      return;
+    }
+
+    if (notification.id) {
+      dismissedNotificationIdsRef.current.add(notification.id);
+      seenNotificationIdsRef.current.delete(notification.id);
+      setNotifications((prev) => prev.filter((item) => item.id !== notification.id));
+      setUnreadCount((prev) => (prev > 0 ? prev - 1 : 0));
+    }
+
     setNotificationsOpen(false);
-    if (listingId != null) {
-      navigate(`/detalle-subasta/${listingId}`);
+    if (notification.listingId != null) {
+      navigate(`/detalle-subasta/${notification.listingId}`);
     }
   };
 
   const notificationCount = notifications.length;
   const hasNotifications = notificationCount > 0;
-  const notificationsButtonLabel = hasNotifications
-    ? `Ver ${notificationCount === 1 ? '1 notificacion' : `${notificationCount} notificaciones`}`
-    : 'Ver notificaciones';
+  const hasUnreadNotifications = unreadCount > 0;
+  const notificationsButtonLabel = hasUnreadNotifications
+    ? `Ver ${unreadCount === 1 ? '1 notificacion nueva' : `${unreadCount} notificaciones nuevas`}`
+    : hasNotifications
+      ? 'Revisar notificaciones'
+      : 'Ver notificaciones';
 
   const resolveLinkParts = (to) => {
     if (typeof to === 'string') {
@@ -367,9 +535,9 @@ export default function Header() {
                   strokeLinecap="round"
                 />
               </svg>
-              {hasNotifications && (
+              {hasUnreadNotifications && (
                 <span className="app-header__notifications-badge">
-                  {notificationCount > 99 ? '99+' : notificationCount}
+                  {unreadCount > 99 ? '99+' : unreadCount}
                 </span>
               )}
             </button>
@@ -403,10 +571,7 @@ export default function Header() {
                         key={notification.id}
                         className={`app-header__notification app-header__notification--${notification.type}`}
                       >
-                        <button
-                          type="button"
-                          onClick={() => handleNotificationNavigate(notification.listingId)}
-                        >
+                        <button type="button" onClick={() => handleNotificationNavigate(notification)}>
                           <span className="app-header__notification-title">{notification.title}</span>
                           <span className="app-header__notification-message">
                             {notification.message}
