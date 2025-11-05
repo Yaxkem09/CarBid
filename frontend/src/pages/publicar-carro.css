@@ -51,6 +51,8 @@
   background: linear-gradient(180deg, var(--pc-bg-page) 0%, rgba(241, 245, 249, 0.4) 40%, #e0e7ff 100%);
   padding: clamp(var(--pc-space-sm), 2vw, var(--pc-space-lg))
     clamp(var(--pc-space-md), 4.5vw, calc(var(--pc-space-2xl) + var(--pc-space-sm)));
+  padding-block-start: clamp(0rem, 1vw, var(--pc-space-2xs));
+  margin-block-start: -2rem;
 }
 
 /* Reseteo suave en scope */
