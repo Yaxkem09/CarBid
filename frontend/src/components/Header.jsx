@@ -113,12 +113,13 @@ function createNotificationsFromBids(bids = [], now = new Date()) {
       userAmount !== null &&
       userAmount < highestAmount
     ) {
+      const outbidSuffix = highestAmount !== null ? `-${highestAmount}` : '';
       notifications.push({
-        id: `outbid-${bid.listingId}`,
+        id: `outbid-${bid.listingId}${outbidSuffix}`,
         listingId: bid.listingId,
         type: 'outbid',
         title: 'Han superado tu oferta',
-        message: `Otro postor superó tu oferta en "${listingTitle}".`,
+        message: `Otro postor supero tu oferta en "${listingTitle}".`,
         timestamp: now.toISOString(),
       });
     }
@@ -196,6 +197,7 @@ export default function Header() {
   const [unreadCount, setUnreadCount] = useState(0);
   const notificationsWrapperRef = useRef(null);
   const seenNotificationIdsRef = useRef(new Set());
+  const dismissedNotificationIdsRef = useRef(new Set());
   const notificationsPanelId = 'app-header-notifications-panel';
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef(null);
@@ -285,17 +287,22 @@ export default function Header() {
           setNotificationsError('');
           setUnreadCount(0);
           seenNotificationIdsRef.current = new Set();
+          dismissedNotificationIdsRef.current = new Set();
           return;
         }
 
         const now = new Date();
         const bidNotifications = createNotificationsFromBids(bidsInfo.data, now);
         const ownerNotifications = createOwnerNotifications(listingsInfo.data, now);
-        const items = [...bidNotifications, ...ownerNotifications].sort((a, b) => {
+        const allItems = [...bidNotifications, ...ownerNotifications].sort((a, b) => {
           const aTime = a.timestamp ? new Date(a.timestamp).getTime() : 0;
           const bTime = b.timestamp ? new Date(b.timestamp).getTime() : 0;
           return bTime - aTime;
         });
+        const dismissedIds = dismissedNotificationIdsRef.current;
+        const items = allItems.filter(
+          (notification) => !notification?.id || !dismissedIds.has(notification.id),
+        );
 
         setNotifications(items);
         const errorMessage = bidsInfo.error || listingsInfo.error || '';
@@ -413,10 +420,21 @@ export default function Header() {
     setNotificationsOpen((prev) => !prev);
   };
 
-  const handleNotificationNavigate = (listingId) => {
+  const handleNotificationNavigate = (notification) => {
+    if (!notification) {
+      return;
+    }
+
+    if (notification.id) {
+      dismissedNotificationIdsRef.current.add(notification.id);
+      seenNotificationIdsRef.current.delete(notification.id);
+      setNotifications((prev) => prev.filter((item) => item.id !== notification.id));
+      setUnreadCount((prev) => (prev > 0 ? prev - 1 : 0));
+    }
+
     setNotificationsOpen(false);
-    if (listingId != null) {
-      navigate(`/detalle-subasta/${listingId}`);
+    if (notification.listingId != null) {
+      navigate(`/detalle-subasta/${notification.listingId}`);
     }
   };
 
@@ -553,10 +571,7 @@ export default function Header() {
                         key={notification.id}
                         className={`app-header__notification app-header__notification--${notification.type}`}
                       >
-                        <button
-                          type="button"
-                          onClick={() => handleNotificationNavigate(notification.listingId)}
-                        >
+                        <button type="button" onClick={() => handleNotificationNavigate(notification)}>
                           <span className="app-header__notification-title">{notification.title}</span>
                           <span className="app-header__notification-message">
                             {notification.message}
