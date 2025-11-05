@@ -370,10 +370,20 @@ const DetalleSubasta = () => {
     ? resolveImageSrc(listingImages[safeActiveIndex])
     : '';
   const primaryDescriptor = [listing?.brand, listing?.model].filter(Boolean).join(' ').trim();
+  const kilometrajeNumber =
+    listing?.kilometraje !== null && listing?.kilometraje !== undefined
+      ? Number(listing.kilometraje)
+      : null;
   const vehicleMetaItems = [
     primaryDescriptor ? { key: 'brand-model', label: primaryDescriptor } : null,
     listing?.year ? { key: 'year', label: `A\u00f1o ${listing?.year}` } : null,
     listing?.color ? { key: 'color', label: `Color ${listing?.color}` } : null,
+    Number.isFinite(kilometrajeNumber)
+      ? {
+          key: 'kilometraje',
+          label: `Kilometraje ${kilometrajeNumber.toLocaleString('es-GT')} km`,
+        }
+      : null,
   ].filter((item) => item && item.label && item.label.trim().length > 0);
   const handleOpenImageModal = useCallback(() => {
     if (hasImages) {

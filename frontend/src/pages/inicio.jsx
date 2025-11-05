@@ -1,15 +1,70 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import { useVehicleOptions } from '../hooks/useVehicleOptions';
 import {
-  vehicleBrands,
-  vehicleModels,
   vehicleColors,
   vehicleYears,
   priceRange,
 } from '../constants/vehicleOptions';
 import { connectSocket } from '../services/socket';
 import './inicio.css';
+
+const RESULTS_PER_PAGE = 4;
+const CARD_MEDIA_ASPECT_RATIO = 16 / 15;
+const CARD_MEDIA_FIT_THRESHOLD = 0.35;
+
+const ResponsiveCardMedia = ({ src, alt, fallbackLabel }) => {
+  const [fitMode, setFitMode] = useState('cover');
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    setFitMode('cover');
+    setHasError(false);
+  }, [src]);
+
+  const handleImageLoad = useCallback((event) => {
+    const { naturalWidth, naturalHeight } = event.currentTarget;
+    if (!naturalWidth || !naturalHeight) {
+      setFitMode('contain');
+      return;
+    }
+
+    const ratio = naturalWidth / naturalHeight;
+    if (!Number.isFinite(ratio)) {
+      setFitMode('contain');
+      return;
+    }
+
+    const ratioDelta = Math.abs(ratio - CARD_MEDIA_ASPECT_RATIO) / CARD_MEDIA_ASPECT_RATIO;
+    setFitMode(ratioDelta > CARD_MEDIA_FIT_THRESHOLD ? 'contain' : 'cover');
+  }, []);
+
+  const handleImageError = useCallback(() => {
+    setHasError(true);
+  }, []);
+
+  if (!src || hasError) {
+    return (
+      <div className="inicio-card__media" aria-hidden="true">
+        <span aria-hidden="true">{fallbackLabel ?? '?'}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`inicio-card__media ${fitMode === 'contain' ? 'inicio-card__media--contain' : ''}`}>
+      <img
+        src={src}
+        alt={alt}
+        loading="lazy"
+        className="inicio-card__media-img"
+        onLoad={handleImageLoad}
+        onError={handleImageError}
+      />
+    </div>
+  );
+};
 
 const Inicio = () => {
   const [listings, setListings] = useState([]);
@@ -25,11 +80,13 @@ const Inicio = () => {
     maxPrice: priceRange.max,
   });
   const [searchResults, setSearchResults] = useState([]);
+  const [searchPage, setSearchPage] = useState(1);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState('');
   const [searchPerformed, setSearchPerformed] = useState(false);
   const navigate = useNavigate();
   const socketRef = useRef(null);
+  const { brands: brandOptions, models: modelOptions } = useVehicleOptions();
 
   const currencyFormatter = useMemo(
     () =>
@@ -38,16 +95,6 @@ const Inicio = () => {
         currency: 'GTQ',
         maximumFractionDigits: 0,
       }),
-    [],
-  );
-
-  const sortedBrands = useMemo(
-    () => [...vehicleBrands].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' })),
-    [],
-  );
-
-  const sortedModels = useMemo(
-    () => [...vehicleModels].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' })),
     [],
   );
 
@@ -92,8 +139,20 @@ const Inicio = () => {
         const endsB = b.endsAt ? new Date(b.endsAt).getTime() : Number.POSITIVE_INFINITY;
         return endsA - endsB;
       })
-      .slice(0, 5);
+      .slice(0, 3);
   }, []);
+
+  const totalSearchPages = useMemo(() => {
+    if (!searchResults.length) {
+      return 1;
+    }
+    return Math.ceil(searchResults.length / RESULTS_PER_PAGE);
+  }, [searchResults.length]);
+
+  const paginatedSearchResults = useMemo(() => {
+    const start = (searchPage - 1) * RESULTS_PER_PAGE;
+    return searchResults.slice(start, start + RESULTS_PER_PAGE);
+  }, [searchResults, searchPage]);
 
   const applySummaryToCollections = useCallback(
     (summary) => {
@@ -270,13 +329,25 @@ const Inicio = () => {
       .get('/api/listings', { params })
       .then((response) => {
         setSearchResults(response.data ?? []);
+        setSearchPage(1);
       })
       .catch((err) => {
         setSearchError(err.response?.data?.message || 'No se pudieron filtrar las subastas');
         setSearchResults([]);
+        setSearchPage(1);
       })
       .finally(() => setSearching(false));
   };
+
+  useEffect(() => {
+    if (!searchResults.length) {
+      setSearchPage(1);
+      return;
+    }
+
+    const maxPage = Math.max(1, Math.ceil(searchResults.length / RESULTS_PER_PAGE));
+    setSearchPage((prev) => (prev > maxPage ? maxPage : prev));
+  }, [searchResults.length]);
 
   return (
     <div className="inicio-page">
@@ -295,31 +366,30 @@ const Inicio = () => {
           <div className="inicio-recommended__list">
             {recommended.map((listing) => {
               const initials = (listing.brand || listing.title || '?').slice(0, 1).toUpperCase();
-              const highestBid = listing.highestBid ?? listing.basePrice;
-              const descriptorParts = [
-                [listing.brand, listing.model].filter(Boolean).join(' ').trim(),
-                listing.year,
-                listing.color,
+              const brandModel = [listing.brand, listing.model].filter(Boolean).join(' ').trim();
+              const subtitleParts = [
+                brandModel || null,
+                listing.year ? String(listing.year) : null,
               ].filter(Boolean);
-              const descriptor = descriptorParts.join(' · ');
+              const subtitle = subtitleParts.join(' | ');
+              const cardTitle = listing.title || brandModel || 'Subasta recomendada';
               const imageSrc = buildImageUrl(listing.images?.[0]);
 
               return (
-                <article key={`recommended-${listing.id}`} className="inicio-recommended-card">
-                  <div className="inicio-recommended-card__image" aria-hidden={!imageSrc}>
-                    {imageSrc ? (
-                      <img src={imageSrc} alt={`Imagen de ${descriptor || listing.title}`} loading="lazy" />
-                    ) : (
-                      <span>{initials}</span>
-                    )}
-                  </div>
-                  <div className="inicio-recommended-card__content">
-                    <h3>{listing.title}</h3>
-                    <p>{descriptor || 'Subasta destacada'}</p>
-                    <p className="inicio-recommended-card__meta">
-                      Oferta más alta: {currencyFormatter.format(highestBid)}
-                    </p>
-                    <button type="button" onClick={() => handleViewDetails(listing.id)}>
+                <article key={`recommended-${listing.id}`} className="inicio-card inicio-card--featured">
+                  <ResponsiveCardMedia
+                    src={imageSrc}
+                    alt={`Imagen de ${cardTitle}`}
+                    fallbackLabel={initials}
+                  />
+                  <div className="inicio-card__body">
+                    <h3 className="inicio-card__title">{cardTitle}</h3>
+                    {subtitle && <p className="inicio-card__subtitle">{subtitle}</p>}
+                    <button
+                      type="button"
+                      className="inicio-card__cta"
+                      onClick={() => handleViewDetails(listing.id)}
+                    >
                       Ver detalles
                     </button>
                   </div>
@@ -346,7 +416,7 @@ const Inicio = () => {
                   className="inicio-select"
                 >
                   <option value="">Todas las marcas</option>
-                  {sortedBrands.map((brand) => (
+                  {brandOptions.map((brand) => (
                     <option key={brand} value={brand}>
                       {brand}
                     </option>
@@ -364,7 +434,7 @@ const Inicio = () => {
                   className="inicio-select"
                 >
                   <option value="">Todos los modelos</option>
-                  {sortedModels.map((model) => (
+                  {modelOptions.map((model) => (
                     <option key={model} value={model}>
                       {model}
                     </option>
@@ -463,37 +533,91 @@ const Inicio = () => {
               <p>No encontramos subastas que coincidan con tu búsqueda.</p>
             )}
             {!searching && !searchError && searchResults.length > 0 && (
-              <div className="inicio-page__grid">
-                {searchResults.map((listing) => {
-                  const imageSrc = buildImageUrl(listing.images?.[0]);
-                  const listingLabel = [listing.brand, listing.model].filter(Boolean).join(' ') || listing.title;
-                  const descriptorParts = [
-                    [listing.brand, listing.model].filter(Boolean).join(' ').trim(),
-                    listing.year,
-                    listing.color,
-                  ].filter(Boolean);
-                  const descriptor = descriptorParts.join(' · ');
+              <>
+                <div className="inicio-page__grid">
+                  {paginatedSearchResults.map((listing) => {
+                    const imageSrc = buildImageUrl(listing.images?.[0]);
+                    const listingLabel = [listing.brand, listing.model].filter(Boolean).join(' ') || listing.title;
+                    const kilometrajeNumber = Number(listing.kilometraje);
+                    const kilometrajeLabel = Number.isFinite(kilometrajeNumber)
+                      ? `${kilometrajeNumber.toLocaleString('es-GT')} km`
+                      : null;
+                    const brandModel = [listing.brand, listing.model].filter(Boolean).join(' ').trim();
+                    const subtitleParts = [
+                      brandModel || null,
+                      listing.year ? String(listing.year) : null,
+                    ].filter(Boolean);
+                    const subtitle = subtitleParts.join(' | ');
+                    const initials = (listing.brand || listing.title || '?').slice(0, 1).toUpperCase();
 
-                  return (
-                    <article key={listing.id} className="inicio-card">
-                      <div className="inicio-card__image" aria-hidden={!imageSrc}>
-                        {imageSrc ? (
-                          <img src={imageSrc} alt={`Imagen de ${listingLabel}`} loading="lazy" />
-                        ) : (
-                          <span>{(listing.brand || listing.title || '?').slice(0, 1).toUpperCase()}</span>
-                        )}
-                      </div>
-                      <h3>{listing.title}</h3>
-                      <p>{descriptor || listingLabel}</p>
-                      <p>Precio base: {currencyFormatter.format(listing.basePrice)}</p>
-                      <p>Oferta más alta: {currencyFormatter.format(listing.highestBid ?? listing.basePrice)}</p>
-                      <button type="button" onClick={() => handleViewDetails(listing.id)}>
-                        Ver detalles
-                      </button>
-                    </article>
-                  );
-                })}
-              </div>
+                    return (
+                    <article key={listing.id} className="inicio-card inicio-card--detailed">
+                      <ResponsiveCardMedia
+                        src={imageSrc}
+                        alt={`Imagen de ${listingLabel}`}
+                        fallbackLabel={initials}
+                      />
+                        <div className="inicio-card__body">
+                          <div className="inicio-card__header">
+                            <h3 className="inicio-card__title">{listing.title}</h3>
+                            <p className="inicio-card__subtitle">{subtitle || listingLabel}</p>
+                          </div>
+                          <div className="inicio-card__stats">
+                            <div className="inicio-card__stat">
+                              <span className="inicio-card__stat-label">Precio base</span>
+                              <span className="inicio-card__stat-value">
+                                {currencyFormatter.format(listing.basePrice)}
+                              </span>
+                            </div>
+                            <div className="inicio-card__stat">
+                              <span className="inicio-card__stat-label">Oferta mas alta</span>
+                              <span className="inicio-card__stat-value">
+                                {currencyFormatter.format(listing.highestBid ?? listing.basePrice)}
+                              </span>
+                            </div>
+                            {kilometrajeLabel && (
+                              <div className="inicio-card__stat">
+                                <span className="inicio-card__stat-label">Kilometraje</span>
+                                <span className="inicio-card__stat-value">{kilometrajeLabel}</span>
+                              </div>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            className="inicio-card__cta"
+                            onClick={() => handleViewDetails(listing.id)}
+                          >
+                            Ver detalles
+                          </button>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+                {searchResults.length > RESULTS_PER_PAGE && (
+                  <div className="inicio-pagination" role="navigation" aria-label="Paginacion de resultados">
+                    <button
+                      type="button"
+                      className="inicio-pagination__button"
+                      onClick={() => setSearchPage((prev) => Math.max(1, prev - 1))}
+                      disabled={searchPage === 1}
+                    >
+                      Anterior
+                    </button>
+                    <span className="inicio-pagination__status">
+                      Pagina {searchPage} de {totalSearchPages}
+                    </span>
+                    <button
+                      type="button"
+                      className="inicio-pagination__button"
+                      onClick={() => setSearchPage((prev) => Math.min(totalSearchPages, prev + 1))}
+                      disabled={searchPage === totalSearchPages}
+                    >
+                      Siguiente
+                    </button>
+                  </div>
+                )}
+              </>
             )}
             {!searchPerformed && <p>Utiliza los filtros para encontrar tu próximo vehículo.</p>}
           </div>

@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
-import { vehicleBrands, vehicleModels, vehicleColors, vehicleYears } from '../constants/vehicleOptions';
+import { vehicleColors, vehicleYears } from '../constants/vehicleOptions';
+import { useVehicleOptions } from '../hooks/useVehicleOptions';
 import './publicar-carro.css';
 
 const initialState = {
@@ -10,6 +11,7 @@ const initialState = {
   model: '',
   color: '',
   year: '',
+  kilometraje: '',
   basePrice: '',
   minIncrement: '',
   description: '',
@@ -104,12 +106,30 @@ function PhotoGrid({ images = [], onRemove }) {
 }
 
 function PreviewCard({ data, photos = [] }) {
-  const { title, brand, model, color, year, basePrice, minIncrement, endsAt, description } = data;
+  const {
+    title,
+    brand,
+    model,
+    color,
+    year,
+    kilometraje,
+    basePrice,
+    minIncrement,
+    endsAt,
+    description,
+  } = data;
 
   const price = formatCurrency(basePrice) || 'Q0.00';
   const increment = formatCurrency(minIncrement) || 'Q0.00';
   const endsAtText = formatDateTime(endsAt) || 'dd/mm/aa hh:mm';
   const coverPhoto = photos[0] ?? null;
+  const mileageNumber = Number.parseInt(kilometraje, 10);
+  const mileageText =
+    Number.isFinite(mileageNumber) && !Number.isNaN(mileageNumber)
+      ? `${mileageNumber.toLocaleString('es-GT')} km`
+      : 'Kilometraje';
+  const hasKilometraje =
+    kilometraje !== undefined && kilometraje !== null && String(kilometraje).trim() !== '';
 
   return (
     <aside className="publish-car__preview-card">
@@ -131,6 +151,9 @@ function PreviewCard({ data, photos = [] }) {
           {year ? ` - ${year}` : '- Año'}
         </p>
         <p className="publish-car__preview-meta">Color: <strong>{color || 'Color'}</strong></p>
+        <p className="publish-car__preview-meta">
+          Kilometraje: <strong>{hasKilometraje ? mileageText : 'Kilometraje'}</strong>
+        </p>
         <p className="publish-car__preview-meta">Precio base: <strong>{price}</strong></p>
         <p className="publish-car__preview-meta">Incremento minimo: <strong>{increment}</strong></p>
         <p className="publish-car__preview-meta">Cierre: {endsAtText}</p>
@@ -143,7 +166,18 @@ function PreviewCard({ data, photos = [] }) {
 }
 
 const getValidationError = (data) => {
-  const { title, brand, model, color, year, basePrice, minIncrement, endsAt } = data;
+  const {
+    title,
+    brand,
+    model,
+    color,
+    year,
+    kilometraje,
+    basePrice,
+    minIncrement,
+    endsAt,
+    description,
+  } = data;
 
   if (!title.trim()) {
     return 'Agrega un titulo descriptivo para la subasta.';
@@ -154,6 +188,17 @@ const getValidationError = (data) => {
   }
   if (normalizedColor.length > 80) {
     return 'El color debe tener maximo 80 caracteres.';
+  }
+  const kilometrajeValue = typeof kilometraje === 'string' ? kilometraje.trim() : String(kilometraje ?? '').trim();
+  if (!kilometrajeValue) {
+    return 'Ingresa el kilometraje actual del vehiculo.';
+  }
+  if (!/^\d+$/.test(kilometrajeValue)) {
+    return 'El kilometraje solo debe contener numeros enteros.';
+  }
+  const kilometrajeNumber = Number.parseInt(kilometrajeValue, 10);
+  if (!Number.isInteger(kilometrajeNumber) || kilometrajeNumber < 0 || kilometrajeNumber > 2000000) {
+    return 'El kilometraje debe estar entre 0 y 2,000,000 km.';
   }
   const yearNumber = Number(year);
   const currentYearLimit = new Date().getFullYear() + 1;
@@ -178,8 +223,30 @@ const getValidationError = (data) => {
   if (endsAtDate <= new Date()) {
     return 'La subasta debe cerrar en una fecha futura.';
   }
+  const descriptionValue =
+    typeof description === 'string' ? description.trim() : String(description ?? '').trim();
+  if (!descriptionValue) {
+    return 'Agrega una descripcion detallada del vehiculo.';
+  }
 
   return '';
+};
+
+const findMatchingOption = (options, value) => {
+  if (!Array.isArray(options) || !options.length || typeof value !== 'string') {
+    return '';
+  }
+
+  const trimmedValue = value.trim();
+  if (!trimmedValue) {
+    return '';
+  }
+
+  const match = options.find(
+    (option) => option.localeCompare(trimmedValue, 'es', { sensitivity: 'base' }) === 0,
+  );
+
+  return match ?? '';
 };
 
 const PublicarCarro = () => {
@@ -191,16 +258,7 @@ const PublicarCarro = () => {
   const [photoError, setPhotoError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-
-  const sortedBrands = useMemo(
-    () => [...vehicleBrands].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' })),
-    [],
-  );
-
-  const sortedModels = useMemo(
-    () => [...vehicleModels].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' })),
-    [],
-  );
+  const { brands: brandOptions, models: modelOptions } = useVehicleOptions();
 
   const sortedColors = useMemo(
     () => [...vehicleColors].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' })),
@@ -208,13 +266,13 @@ const PublicarCarro = () => {
   );
 
   const brandSelectValue = useMemo(
-    () => (vehicleBrands.includes(formData.brand) ? formData.brand : ''),
-    [formData.brand],
+    () => findMatchingOption(brandOptions, formData.brand),
+    [brandOptions, formData.brand],
   );
 
   const modelSelectValue = useMemo(
-    () => (vehicleModels.includes(formData.model) ? formData.model : ''),
-    [formData.model],
+    () => findMatchingOption(modelOptions, formData.model),
+    [modelOptions, formData.model],
   );
 
   const colorSelectValue = useMemo(
@@ -353,8 +411,18 @@ const PublicarCarro = () => {
   };
 
   const handleChange = (event) => {
-    const { name, value } = event.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    const { name, value, dataset } = event.target;
+    let nextValue = value;
+
+    if (
+      dataset.capitalize === 'first' &&
+      typeof nextValue === 'string' &&
+      nextValue.length > 0
+    ) {
+      nextValue = nextValue.charAt(0).toLocaleUpperCase('es-GT') + nextValue.slice(1);
+    }
+
+    setFormData((prev) => ({ ...prev, [name]: nextValue }));
     if (error) {
       setError('');
     }
@@ -382,6 +450,7 @@ const PublicarCarro = () => {
     const sanitizedDescription = formData.description.trim();
     const sanitizedEndsAt = formData.endsAt;
     const sanitizedYear = Number(formData.year);
+    const sanitizedKilometraje = Number.parseInt(String(formData.kilometraje).trim(), 10);
     const sanitizedBasePrice = Number(formData.basePrice);
     const sanitizedMinIncrement = Number(formData.minIncrement);
 
@@ -391,6 +460,7 @@ const PublicarCarro = () => {
     formPayload.append('model', sanitizedModel);
     formPayload.append('color', sanitizedColor);
     formPayload.append('year', String(sanitizedYear));
+    formPayload.append('kilometraje', String(sanitizedKilometraje));
     formPayload.append('basePrice', String(sanitizedBasePrice));
     formPayload.append('minIncrement', String(sanitizedMinIncrement));
     formPayload.append('description', sanitizedDescription);
@@ -453,7 +523,7 @@ const PublicarCarro = () => {
                       className="publish-car__select"
                     >
                       <option value="">Selecciona una marca</option>
-                      {sortedBrands.map((brand) => (
+                      {brandOptions.map((brand) => (
                         <option key={brand} value={brand}>
                           {brand}
                         </option>
@@ -466,6 +536,7 @@ const PublicarCarro = () => {
                     value={formData.brand}
                     onChange={handleChange}
                     placeholder="O escribe una marca personalizada"
+                    data-capitalize="first"
                     className="publish-car__input publish-car__input--secondary"
                   />
                 </Field>
@@ -478,7 +549,7 @@ const PublicarCarro = () => {
                       className="publish-car__select"
                     >
                       <option value="">Selecciona un modelo</option>
-                      {sortedModels.map((modelName) => (
+                      {modelOptions.map((modelName) => (
                         <option key={modelName} value={modelName}>
                           {modelName}
                         </option>
@@ -491,6 +562,7 @@ const PublicarCarro = () => {
                     value={formData.model}
                     onChange={handleChange}
                     placeholder="O escribe un modelo personalizado"
+                    data-capitalize="first"
                     className="publish-car__input publish-car__input--secondary"
                   />
                 </Field>
@@ -510,14 +582,6 @@ const PublicarCarro = () => {
                       ))}
                     </select>
                   </div>
-                  <input
-                    type="text"
-                    name="color"
-                    value={formData.color}
-                    onChange={handleChange}
-                    placeholder="O describe otro color"
-                    className="publish-car__input publish-car__input--secondary"
-                  />
                 </Field>
                 <Field label="Año">
                   <div className="publish-car__select-wrapper">
@@ -544,6 +608,19 @@ const PublicarCarro = () => {
                     onChange={handleChange}
                     placeholder="O escribe manualmente"
                     className="publish-car__input publish-car__input--secondary"
+                  />
+                </Field>
+                <Field label="Kilometraje (km)">
+                  <input
+                    type="number"
+                    name="kilometraje"
+                    min="0"
+                    max="2000000"
+                    step="1"
+                    value={formData.kilometraje}
+                    onChange={handleChange}
+                    placeholder="Ej. 65000"
+                    className="publish-car__input"
                   />
                 </Field>
               </div>
