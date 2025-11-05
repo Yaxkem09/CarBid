@@ -50,19 +50,27 @@ router.get('/mine', auth, async (req, res) => {
   res.json(
     bidsPlain.map((bid) => {
       const auction = bid.auction ?? {};
-      const highestAmount = highestMap.get(auction.id) ?? null;
+      const rawHighestAmount = highestMap.get(auction.id) ?? null;
+      const parsedHighestAmount =
+        rawHighestAmount !== null && rawHighestAmount !== undefined
+          ? Number(rawHighestAmount)
+          : null;
+      const currentHighestBid = Number.isFinite(parsedHighestAmount)
+        ? parsedHighestAmount
+        : null;
+      const userAmount = Number(bid.amount);
       let result = 'En curso';
 
       if (auction.status === 'ended') {
         result =
-          highestAmount !== null && Number(bid.amount) === Number(highestAmount)
+          currentHighestBid !== null && Number.isFinite(userAmount) && userAmount === currentHighestBid
             ? 'Ganada'
             : 'No ganada';
       }
 
       return {
         id: bid.id,
-        amount: Number(bid.amount),
+        amount: Number.isFinite(userAmount) ? userAmount : Number(bid.amount),
         createdAt: bid.createdAt ?? bid.created_at,
         listingId: auction.id,
         bidderId: bid.bidderId ?? bid.bidder_id,
@@ -70,6 +78,9 @@ router.get('/mine', auth, async (req, res) => {
         listingTitle: auction.title,
         listingStatus: auction.status,
         listingEndsAt: auction.endsAt ?? auction.ends_at,
+        currentHighestBid,
+        isHighestBidder:
+          currentHighestBid !== null && Number.isFinite(userAmount) && userAmount === currentHighestBid,
         result,
       };
     }),
