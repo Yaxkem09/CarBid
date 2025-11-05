@@ -10,7 +10,7 @@ import {
 import { connectSocket } from '../services/socket';
 import './inicio.css';
 
-const RESULTS_PER_PAGE = 4;
+const RESULTS_PER_PAGE = 6;
 
 const ResponsiveCardMedia = ({ src, alt, fallbackLabel }) => {
   const [hasError, setHasError] = useState(false);

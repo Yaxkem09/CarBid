@@ -52,6 +52,7 @@
   padding: clamp(var(--pc-space-sm), 2vw, var(--pc-space-lg))
     clamp(var(--pc-space-md), 4.5vw, calc(var(--pc-space-2xl) + var(--pc-space-sm)));
   padding-block-start: clamp(0rem, 1vw, var(--pc-space-2xs));
+  padding-block-end: clamp(var(--pc-space-xl), 4vw, var(--pc-space-2xl));
   margin-block-start: -2rem;
 }
 
@@ -87,6 +88,7 @@
 .publish-car__layout {
   display: grid;
   gap: clamp(var(--pc-space-lg), 2.25vw, var(--pc-space-2xl));
+  padding-block-end: clamp(var(--pc-space-xl), 5vw, calc(var(--pc-space-2xl) + var(--pc-space-md)));
 }
 .publish-car__layout > * {
   width: calc(100% / 1.1); /* compensate for scale so elements keep their grid footprint */
@@ -112,10 +114,7 @@
   gap: clamp(var(--pc-space-lg), 2.25vw, var(--pc-space-xl));
   transition: transform .3s ease, box-shadow .3s ease;
 }
-.publish-car__form-card:hover {
-  transform: scale(1.1) translateY(-.1875rem);
-  box-shadow: var(--pc-shadow-card-lg);
-}
+.publish-car__form-card:hover { box-shadow: var(--pc-shadow-card-lg); }
 @media (max-width: 28.125rem) {
   .publish-car__form-card { padding: var(--pc-space-lg); }
 }
@@ -443,10 +442,7 @@
   top: calc(var(--pc-space-xl) + var(--pc-space-sm));
   transition: transform .3s ease, box-shadow .3s ease;
 }
-.publish-car__preview-card:hover {
-  transform: scale(1.1) translateY(-.1875rem);
-  box-shadow: 0 1.3125rem 2.625rem rgba(15, 23, 42, 0.14);
-}
+.publish-car__preview-card:hover { box-shadow: 0 1.3125rem 2.625rem rgba(15, 23, 42, 0.14); }
 .publish-car__preview-title {
   margin: 0;
   font-size: 0.75rem;
