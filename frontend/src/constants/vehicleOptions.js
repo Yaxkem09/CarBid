@@ -59,6 +59,6 @@ export const vehicleYears = Array.from(
 
 export const priceRange = {
   min: 0,
-  max: 200000,
+  max: 800000,
   step: 500,
 };

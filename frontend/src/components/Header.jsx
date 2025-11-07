@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import logo1 from '../assets/logo1.png';
@@ -13,6 +13,10 @@ const LINKS = [
 const ENDING_SOON_THRESHOLD_MINUTES = 30;
 const ENDING_CRITICAL_THRESHOLD_MINUTES = 1;
 const OWNER_ENDED_LOOKBACK_DAYS = 7;
+const DISMISSED_STORAGE_PREFIX = 'carbid-dismissed-notifications';
+
+const getDismissedStorageKey = (userId) =>
+  `${DISMISSED_STORAGE_PREFIX}-${userId ?? 'guest'}`;
 
 function safeDate(value) {
   if (!value) return null;
@@ -190,6 +194,7 @@ export default function Header() {
   const navigate = useNavigate();
   const location = useLocation();
   const [userName, setUserName] = useState('Usuario');
+  const [userId, setUserId] = useState(null);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [notificationsError, setNotificationsError] = useState('');
@@ -212,6 +217,78 @@ export default function Header() {
     [],
   );
 
+  const computeUnseenCount = useCallback((items) => {
+    if (!Array.isArray(items)) {
+      return 0;
+    }
+    const seenIds = seenNotificationIdsRef.current;
+    return items.reduce((count, notification) => {
+      if (!notification?.id) {
+        return count + 1;
+      }
+      return seenIds.has(notification.id) ? count : count + 1;
+    }, 0);
+  }, []);
+
+  const persistDismissedNotifications = useCallback(() => {
+    if (typeof window === 'undefined' || userId == null) {
+      return;
+    }
+    try {
+      const key = getDismissedStorageKey(userId);
+      const payload = JSON.stringify([...dismissedNotificationIdsRef.current]);
+      window.localStorage.setItem(key, payload);
+    } catch (storageError) {
+      // Silent failure: localStorage might be full or unavailable.
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      dismissedNotificationIdsRef.current = new Set();
+      return;
+    }
+
+    if (userId == null) {
+      dismissedNotificationIdsRef.current = new Set();
+      return;
+    }
+
+    try {
+      const key = getDismissedStorageKey(userId);
+      const raw = window.localStorage.getItem(key);
+      const baseline = dismissedNotificationIdsRef.current;
+      const nextSet = new Set(baseline);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          parsed.forEach((id) => {
+            if (typeof id === 'string' || typeof id === 'number') {
+              nextSet.add(id);
+            }
+          });
+        }
+      }
+      dismissedNotificationIdsRef.current = nextSet;
+    } catch (storageError) {
+      dismissedNotificationIdsRef.current = new Set();
+    }
+
+    const dismissedIds = dismissedNotificationIdsRef.current;
+    if (dismissedIds.size) {
+      setNotifications((prev) => {
+        const filtered = prev.filter(
+          (notification) => !notification?.id || !dismissedIds.has(notification.id),
+        );
+        if (filtered.length === prev.length) {
+          return prev;
+        }
+        setUnreadCount(computeUnseenCount(filtered));
+        return filtered;
+      });
+    }
+  }, [userId, computeUnseenCount]);
+
   useEffect(() => {
     let alive = true;
 
@@ -222,6 +299,7 @@ export default function Header() {
           return;
         }
         const user = response.data?.user ?? {};
+        setUserId(user.id ?? null);
         const lastName = Array.isArray(user.apellidos)
           ? user.apellidos[0]
           : (user.apellidos || '').split(' ').filter(Boolean)[0];
@@ -233,6 +311,7 @@ export default function Header() {
           return;
         }
         setUserName('Usuario');
+        setUserId(null);
       }
     };
 
@@ -320,15 +399,7 @@ export default function Header() {
           [...previousSeenIds].filter((id) => currentIds.has(id)),
         );
 
-        const effectiveSeen = seenNotificationIdsRef.current;
-        const unseenCount = items.reduce((count, notification) => {
-          if (!notification?.id) {
-            return count + 1;
-          }
-          return effectiveSeen.has(notification.id) ? count : count + 1;
-        }, 0);
-
-        setUnreadCount(unseenCount);
+        setUnreadCount(computeUnseenCount(items));
       } catch (error) {
         if (!alive) return;
         setNotificationsError('No se pudieron cargar las notificaciones.');
@@ -375,21 +446,6 @@ export default function Header() {
   }, [notificationsOpen]);
 
   useEffect(() => {
-    if (!notificationsOpen) {
-      return;
-    }
-
-    const seenIds = seenNotificationIdsRef.current;
-    notifications.forEach((notification) => {
-      if (notification?.id) {
-        seenIds.add(notification.id);
-      }
-    });
-
-    setUnreadCount(0);
-  }, [notificationsOpen, notifications]);
-
-  useEffect(() => {
     if (!userMenuOpen) {
       return undefined;
     }
@@ -428,8 +484,15 @@ export default function Header() {
     if (notification.id) {
       dismissedNotificationIdsRef.current.add(notification.id);
       seenNotificationIdsRef.current.delete(notification.id);
-      setNotifications((prev) => prev.filter((item) => item.id !== notification.id));
-      setUnreadCount((prev) => (prev > 0 ? prev - 1 : 0));
+      setNotifications((prev) => {
+        const next = prev.filter((item) => item.id !== notification.id);
+        if (next.length === prev.length) {
+          return prev;
+        }
+        setUnreadCount(computeUnseenCount(next));
+        return next;
+      });
+      persistDismissedNotifications();
     }
 
     setNotificationsOpen(false);
