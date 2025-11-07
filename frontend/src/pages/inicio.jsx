@@ -10,6 +10,22 @@ import {
 import { connectSocket } from '../services/socket';
 import './inicio.css';
 
+const clampPriceValue = (value) => Math.min(Math.max(value, priceRange.min), priceRange.max);
+
+const sanitizePriceInput = (rawValue) => {
+  if (typeof rawValue === 'number') {
+    return rawValue;
+  }
+  if (typeof rawValue !== 'string') {
+    return priceRange.min;
+  }
+  const digitsOnly = rawValue.replace(/[^\d]/g, '');
+  if (!digitsOnly) {
+    return priceRange.min;
+  }
+  return Number(digitsOnly);
+};
+
 const RESULTS_PER_PAGE = 6;
 
 const ResponsiveCardMedia = ({ src, alt, fallbackLabel }) => {
@@ -74,6 +90,19 @@ const Inicio = () => {
         maximumFractionDigits: 0,
       }),
     [],
+  );
+
+  const manualPriceFormatter = useMemo(
+    () =>
+      new Intl.NumberFormat('es-GT', {
+        maximumFractionDigits: 0,
+      }),
+    [],
+  );
+
+  const formatManualPrice = useCallback(
+    (value) => (Number.isFinite(value) ? manualPriceFormatter.format(value) : ''),
+    [manualPriceFormatter],
   );
 
   const sortedColors = useMemo(
@@ -266,7 +295,7 @@ const Inicio = () => {
 
   const handlePriceChange = (event) => {
     const { name, value } = event.target;
-    const numericValue = Number(value);
+    const numericValue = clampPriceValue(sanitizePriceInput(value));
 
     setFilters((prev) => {
       if (name === 'minPrice') {
@@ -492,8 +521,30 @@ const Inicio = () => {
                 </label>
               </div>
               <div className="inicio-page__range-labels">
-                <span>{currencyFormatter.format(filters.minPrice)}</span>
-                <span>{currencyFormatter.format(filters.maxPrice)}</span>
+                <label>
+                  <span>Mínimo</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    name="minPrice"
+                    value={formatManualPrice(filters.minPrice)}
+                    onChange={handlePriceChange}
+                    aria-label="Precio mínimo manual"
+                    autoComplete="off"
+                  />
+                </label>
+                <label>
+                  <span>Máximo</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    name="maxPrice"
+                    value={formatManualPrice(filters.maxPrice)}
+                    onChange={handlePriceChange}
+                    aria-label="Precio máximo manual"
+                    autoComplete="off"
+                  />
+                </label>
               </div>
             </fieldset>
 
