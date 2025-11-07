@@ -27,7 +27,7 @@ if (!useS3Storage) {
 }
 
 const MAX_IMAGE_COUNT = 4;
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5 MB
+const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10 MB
 const allowedMimeTypes = new Set([
   'image/jpeg',
   'image/png',
@@ -190,7 +190,7 @@ const handleImageUpload = (req, res, next) => {
 
     if (err instanceof multer.MulterError) {
       if (err.code === 'LIMIT_FILE_SIZE') {
-        return res.status(400).json({ message: 'Cada imagen debe pesar menos de 5MB.' });
+        return res.status(400).json({ message: 'Cada imagen debe pesar menos de 10MB.' });
       }
       if (err.code === 'LIMIT_FILE_COUNT') {
         return res.status(400).json({ message: `Solo se permiten ${MAX_IMAGE_COUNT} imagenes por publicacion.` });
@@ -520,6 +520,19 @@ router.get('/:id', auth, async (req, res) => {
 router.post('/', auth, handleImageUpload, async (req, res) => {
   const body = req.body ?? {};
   const uploadedFiles = Array.isArray(req.files) ? req.files : [];
+
+  if (uploadedFiles.length) {
+    console.log(
+      `[POST /api/listings] ${uploadedFiles.length} imagen(es) recibidas:`,
+      uploadedFiles.map((file, index) => ({
+        index: index + 1,
+        name: file.originalname,
+        size: file.size,
+      })),
+    );
+  } else {
+    console.log('[POST /api/listings] Solicitud sin imagenes adjuntas.');
+  }
 
   const readField = (field) => {
     const value = body[field];
