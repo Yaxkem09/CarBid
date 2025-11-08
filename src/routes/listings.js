@@ -329,9 +329,59 @@ function buildUniqueList(rows, key) {
   return results;
 }
 
+function buildBrandModelMap(rows, canonicalBrands = []) {
+  if (!Array.isArray(rows) || !Array.isArray(canonicalBrands) || !canonicalBrands.length) {
+    return {};
+  }
+
+  const brandToModels = rows.reduce((map, row) => {
+    const rawBrand = typeof row?.brand === 'string' ? row.brand.trim() : '';
+    const rawModel = typeof row?.model === 'string' ? row.model.trim() : '';
+    if (!rawBrand || !rawModel) {
+      return map;
+    }
+
+    const brandKey = rawBrand.toLocaleLowerCase('es-GT');
+    const modelKey = rawModel.toLocaleLowerCase('es-GT');
+    if (!brandKey || !modelKey) {
+      return map;
+    }
+
+    if (!map.has(brandKey)) {
+      map.set(brandKey, new Map());
+    }
+
+    const modelsMap = map.get(brandKey);
+    if (!modelsMap.has(modelKey)) {
+      modelsMap.set(modelKey, rawModel);
+    }
+
+    return map;
+  }, new Map());
+
+  return canonicalBrands.reduce((result, brand) => {
+    if (typeof brand !== 'string') {
+      return result;
+    }
+    const brandKey = brand.toLocaleLowerCase('es-GT');
+    const modelsMap = brandToModels.get(brandKey);
+    if (!modelsMap) {
+      return result;
+    }
+
+    const models = Array.from(modelsMap.values()).sort((a, b) =>
+      a.localeCompare(b, 'es', { sensitivity: 'base' }),
+    );
+    if (models.length) {
+      result[brand] = models;
+    }
+    return result;
+  }, {});
+}
+
 router.get('/options', auth, async (_req, res) => {
   try {
-    const [brandRows, modelRows] = await Promise.all([
+    const [brandRows, modelRows, brandModelRows] = await Promise.all([
       Auction.findAll({
         attributes: [[sequelize.fn('DISTINCT', sequelize.col('brand')), 'brand']],
         order: [[sequelize.fn('LOWER', sequelize.col('brand')), 'ASC']],
@@ -342,14 +392,24 @@ router.get('/options', auth, async (_req, res) => {
         order: [[sequelize.fn('LOWER', sequelize.col('model')), 'ASC']],
         raw: true,
       }),
+      Auction.findAll({
+        attributes: ['brand', 'model'],
+        where: {
+          brand: { [Op.ne]: null },
+          model: { [Op.ne]: null },
+        },
+        raw: true,
+      }),
     ]);
 
     const brands = buildUniqueList(brandRows, 'brand');
     const models = buildUniqueList(modelRows, 'model');
+    const brandModelMap = buildBrandModelMap(brandModelRows, brands);
 
     res.json({
       brands,
       models,
+      brandModelMap,
     });
   } catch (error) {
     console.error('Failed to fetch listing options:', error);
