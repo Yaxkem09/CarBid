@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import api from '../services/api';
 import { vehicleBrands, vehicleModels } from '../constants/vehicleOptions';
 
@@ -33,10 +33,33 @@ const toUniqueSortedList = (values) => {
 
 const fallbackBrands = toUniqueSortedList(vehicleBrands);
 const fallbackModels = toUniqueSortedList(vehicleModels);
+const fallbackBrandModelMap = {};
+
+const normalizeBrandKey = (value) =>
+  typeof value === 'string' ? value.trim().toLocaleLowerCase('es-GT') : '';
+
+const normalizeBrandModelMap = (candidate) => {
+  if (!candidate || typeof candidate !== 'object') {
+    return fallbackBrandModelMap;
+  }
+
+  return Object.entries(candidate).reduce((acc, [brandName, models]) => {
+    const brandKey = normalizeBrandKey(brandName);
+    if (!brandKey) {
+      return acc;
+    }
+    const normalizedModels = toUniqueSortedList(models);
+    if (normalizedModels.length) {
+      acc[brandKey] = normalizedModels;
+    }
+    return acc;
+  }, {});
+};
 
 export function useVehicleOptions() {
   const [brands, setBrands] = useState(fallbackBrands);
   const [models, setModels] = useState(fallbackModels);
+  const [modelsByBrand, setModelsByBrand] = useState(fallbackBrandModelMap);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -53,14 +76,19 @@ export function useVehicleOptions() {
 
         const fetchedBrands = toUniqueSortedList(response.data?.brands);
         const fetchedModels = toUniqueSortedList(response.data?.models);
+        const fetchedBrandMap = normalizeBrandModelMap(response.data?.brandModelMap);
 
         setBrands(fetchedBrands.length ? fetchedBrands : fallbackBrands);
         setModels(fetchedModels.length ? fetchedModels : fallbackModels);
+        setModelsByBrand(
+          Object.keys(fetchedBrandMap).length ? fetchedBrandMap : fallbackBrandModelMap,
+        );
       } catch (err) {
         if (!cancelled) {
           setError(err.response?.data?.message || 'No se pudieron cargar las opciones disponibles.');
           setBrands(fallbackBrands);
           setModels(fallbackModels);
+          setModelsByBrand(fallbackBrandModelMap);
         }
       } finally {
         if (!cancelled) {
@@ -76,14 +104,25 @@ export function useVehicleOptions() {
     };
   }, []);
 
+  const getModelsForBrand = useCallback(
+    (brand) => {
+      const key = normalizeBrandKey(brand);
+      if (key && modelsByBrand[key]?.length) {
+        return modelsByBrand[key];
+      }
+      return models;
+    },
+    [models, modelsByBrand],
+  );
+
   return useMemo(
     () => ({
       brands,
       models,
+      getModelsForBrand,
       loading,
       error,
     }),
-    [brands, models, loading, error],
+    [brands, models, getModelsForBrand, loading, error],
   );
 }
-
