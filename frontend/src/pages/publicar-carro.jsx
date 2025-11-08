@@ -258,7 +258,7 @@ const PublicarCarro = () => {
   const [photoError, setPhotoError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { brands: brandOptions, models: modelOptions } = useVehicleOptions();
+  const { brands: brandOptions, models: modelOptions, getModelsForBrand } = useVehicleOptions();
 
   const sortedColors = useMemo(
     () => [...vehicleColors].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' })),
@@ -270,9 +270,14 @@ const PublicarCarro = () => {
     [brandOptions, formData.brand],
   );
 
+  const filteredModelOptions = useMemo(
+    () => getModelsForBrand(brandSelectValue || ''),
+    [brandSelectValue, getModelsForBrand],
+  );
+
   const modelSelectValue = useMemo(
-    () => findMatchingOption(modelOptions, formData.model),
-    [modelOptions, formData.model],
+    () => findMatchingOption(filteredModelOptions, formData.model),
+    [filteredModelOptions, formData.model],
   );
 
   const colorSelectValue = useMemo(
@@ -310,6 +315,20 @@ const PublicarCarro = () => {
     },
     [],
   );
+
+  useEffect(() => {
+    if (!formData.model) {
+      return;
+    }
+    const matchesAnyOption = Boolean(findMatchingOption(modelOptions, formData.model));
+    if (!matchesAnyOption) {
+      return;
+    }
+    const matchesFiltered = Boolean(findMatchingOption(filteredModelOptions, formData.model));
+    if (!matchesFiltered) {
+      setFormData((prev) => ({ ...prev, model: '' }));
+    }
+  }, [filteredModelOptions, formData.model, modelOptions]);
 
   const ingestFiles = (files) => {
     if (!files?.length) {
@@ -549,7 +568,7 @@ const PublicarCarro = () => {
                       className="publish-car__select"
                     >
                       <option value="">Selecciona un modelo</option>
-                      {modelOptions.map((modelName) => (
+                      {filteredModelOptions.map((modelName) => (
                         <option key={modelName} value={modelName}>
                           {modelName}
                         </option>

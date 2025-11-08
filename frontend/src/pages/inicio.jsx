@@ -26,6 +26,9 @@ const sanitizePriceInput = (rawValue) => {
   return Number(digitsOnly);
 };
 
+const normalizeTextValue = (value) =>
+  typeof value === 'string' ? value.trim().toLocaleLowerCase('es-GT') : '';
+
 const RESULTS_PER_PAGE = 6;
 
 const ResponsiveCardMedia = ({ src, alt, fallbackLabel }) => {
@@ -80,7 +83,7 @@ const Inicio = () => {
   const [searchPerformed, setSearchPerformed] = useState(false);
   const navigate = useNavigate();
   const socketRef = useRef(null);
-  const { brands: brandOptions, models: modelOptions } = useVehicleOptions();
+  const { brands: brandOptions, models: modelOptions, getModelsForBrand } = useVehicleOptions();
 
   const currencyFormatter = useMemo(
     () =>
@@ -109,6 +112,24 @@ const Inicio = () => {
     () => [...vehicleColors].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' })),
     [],
   );
+
+  const availableModelOptions = useMemo(
+    () => getModelsForBrand(filters.brand),
+    [filters.brand, getModelsForBrand],
+  );
+
+  useEffect(() => {
+    if (!filters.model) {
+      return;
+    }
+    const normalizedModel = normalizeTextValue(filters.model);
+    const isAllowed = availableModelOptions.some(
+      (option) => normalizeTextValue(option) === normalizedModel,
+    );
+    if (!isAllowed) {
+      setFilters((prev) => ({ ...prev, model: '' }));
+    }
+  }, [availableModelOptions, filters.model]);
 
   const assetBaseUrl = useMemo(() => {
     const base = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
@@ -446,7 +467,7 @@ const Inicio = () => {
                   className="inicio-select"
                 >
                   <option value="">Todos los modelos</option>
-                  {modelOptions.map((model) => (
+                  {availableModelOptions.map((model) => (
                     <option key={model} value={model}>
                       {model}
                     </option>
